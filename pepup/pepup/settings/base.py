@@ -32,11 +32,13 @@ INSTALLED_APPS = [
 SECONDS_APPS = [
     'accounts',
     'api',
+    'chat',
 ]
 
 # package
 THIRD_APPS = [
     'rest_framework',
+    'rest_framework.authtoken',
 
     # allauth
     'allauth',
@@ -45,6 +47,10 @@ THIRD_APPS = [
 
     'allauth.socialaccount.providers.instagram',
     'allauth.socialaccount.providers.kakao',
+
+    'drf_yasg',
+
+    'channels',
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS
@@ -103,13 +109,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -126,6 +132,10 @@ STATIC_ROOT = 'static'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+
+# Default user model
+AUTH_USER_MODEL = 'accounts.User'
+
 # allauth settings
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
@@ -136,3 +146,11 @@ AUTHENTICATION_BACKENDS = (
 )
 
 SITE_ID = 1
+
+# drf 토큰인증처
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
+
