@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import (AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin)
+from django.conf import settings
+
+from api.models import Refund, Payment
 
 
-# Create your models here.
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -34,20 +36,48 @@ class UserManager(BaseUserManager):
 class User(AbstractUser):
     username = None
     email = models.EmailField(verbose_name='email address', unique=True)
-    nickname = models.CharField(max_length=30, unique=True, verbose_name='nickname')
-    phone = models.CharField(max_length=19, unique=True, help_text='숫자만 입력해주세요')
+    nickname = models.CharField(max_length=30, unique=True, null=True, verbose_name='nickname')
+    phone = models.CharField(max_length=19, unique=True, null=True, help_text='숫자만 입력해주세요')
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nickname', 'phone']
 
     objects = UserManager()
 
     def __str__(self):
+        if self.nickname:
+            return self.nickname
         return self.email
 
 
 class PhoneConfirm(models.Model):
-    user = models.OneToOneField(User, related_name='phone_confirm',on_delete=models.CASCADE)
+    user = models.OneToOneField(User, related_name='phone_confirm',on_delete=models.CASCADE, blank=True, null=True)
     key = models.CharField(max_length=6)
     is_confirmed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+def img_directory_path_profile(instance, filename):
+    return 'user/{}/profile/{}'.format(instance.user.email, filename)
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    thumbnail_img = models.ImageField(upload_to=img_directory_path_profile)
+    background_img = models.ImageField(upload_to=img_directory_path_profile)
+    address1 = models.TextField(verbose_name='주소1')
+    address2 = models.TextField(verbose_name='주소2')
+    introduce = models.TextField(verbose_name='소개')
+
+
+class DeliveryPolicy(models.Model):
+    seller = models.OneToOneField(User, on_delete=models.CASCADE)
+
+
+class WalletLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    amount = models.IntegerField()
+    log = models.TextField(verbose_name='로그')
+    payment = models.ForeignKey(Payment, blank=True, null=True, on_delete=models.CASCADE)
+    refund = models.ForeignKey(Refund, blank=True, null=True, on_delete=models.CASCADE)
+    create_at = models.DateTimeField(auto_now_add=True)
+    update_at = models.DateTimeField(auto_now=True)

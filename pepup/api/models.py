@@ -1,15 +1,39 @@
 from django.db import models
 from django.conf import settings
 
+
 # Create your models here.
 class Brand(models.Model):
     name = models.CharField(max_length=100, verbose_name='브랜드명')
 
+    # todo: 로고 이미지 fields
+
     def __str__(self):
         return self.name
 
-def img_directory_path(instance, filename):
-    return '{}/{}'.format(instance.seller.nickname,filename)
+
+class Category(models.Model):
+    name = models.CharField(max_length=200)
+    parent = models.ForeignKey('self', blank=True, null=True, related_name='children', on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name_plural = "categories"
+
+    def __str__(self):
+        full_path = [self.name]
+        k = self.parent
+        while k is not None:
+            full_path.append(k.name)
+            k = k.parent
+        return ' -> '.join(full_path[::-1])
+
+
+class Tag(models.Model):
+    tag = models.CharField(max_length=30)
+
+    def __str__(self):
+        return self.tag
+
 
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name='상품명')
@@ -18,23 +42,57 @@ class Product(models.Model):
     price = models.IntegerField(verbose_name='가격')
     content = models.TextField(verbose_name='설명')
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    thumnail = models.ImageField(upload_to=img_directory_path)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='수정일')
     sold = models.BooleanField(default=False, verbose_name='판매완료')
-    promote_rate = models.FloatField(default=0, verbose_name='할인율')
-    promotion_price = models.IntegerField(verbose_name='할인가격')
+    on_discount = models.BooleanField(default=False,verbose_name='세일중')
+    discount_rate = models.FloatField(default=0, verbose_name='할인율')
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.CASCADE)
+    is_refundable = models.BooleanField(default=False)
+    tag = models.ManyToManyField(Tag)
+    # todo:
+    # 환불가능, 사이즈(카테고리화: 남자->XL),
 
+    class Meta:
+        ordering = ['-id']
     def __str__(self):
         return self.name
 
+    def get_cat_list(self):
+        k = self.category  # for now ignore this instance method
 
+        breadcrumb = ["dummy"]
+        while k is not None:
+            breadcrumb.append(k.slug)
+            k = k.parent
+        for i in range(len(breadcrumb) - 1):
+            breadcrumb[i] = '/'.join(breadcrumb[-1:i - 1:-1])
+        return breadcrumb[-1:0:-1]
+
+    def get_discount_price(self):
+        return self.price * (1-self.discount_rate)
+
+def img_directory_path(instance, filename):
+    return 'user/{}/products/{}'.format(instance.product.seller.email,filename)
+
+
+class ProdThumbnail(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    thumbnail = models.FileField(upload_to=img_directory_path)
+
+    # def save(self, *args, **kwargs):
+    #     if self.thumbnail:
+    #         self.thumbnail =
+
+
+class Like(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,related_name='liker',on_delete=models.CASCADE)
+    product = models.ForeignKey(Product,on_delete=models.CASCADE)
+    is_liked = models.BooleanField(default=True)
+
+    # todo :
     # sold 후 delete 불가능하게!
     # def lock_delete():
-
-
-class Promotion(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
 
 
 class Payment(models.Model):
@@ -52,13 +110,14 @@ class Payment(models.Model):
 
     receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
     order_id = models.CharField(max_length=100,verbose_name='주문번호')
-    name = models.CharField(max_length=100, verbose_name='대표상품명')
     price = models.IntegerField(verbose_name='결제금액')
+    name = models.CharField(max_length=100, verbose_name='대표상품명')
+
     tax_free = models.IntegerField(verbose_name='면세금액')
     remain_price = models.IntegerField(verbose_name='남은금액')
     remain_tax_free = models.IntegerField(verbose_name='남은면세금액')
     cancelled_price = models.IntegerField(verbose_name='취소금액')
-    cancelled_tax_free=models.IntegerField(verbose_name='취소면세금액')
+    cancelled_tax_free = models.IntegerField(verbose_name='취소면세금액')
     pg = models.TextField(blank=True, null=True,verbose_name='pg사')
     method = models.TextField(verbose_name='결제수단')
     payment_data = models.TextField('raw데이터')
@@ -70,14 +129,25 @@ class Payment(models.Model):
 
 
 class Trade(models.Model):
-    payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    STATUS = [
+        (0,'결제전'),
+        (1,'결제중'),
+        (2,'결제완료'),
+        (3,'배송중'),
+        (4,'배송완료'),
+        (5,'거래완료'),
+        (-1,'환불'),
+    ]
+
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, null=True, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='buyer')
-    pay_end = models.BooleanField(default=False, verbose_name='결제완료')
+    status = models.IntegerField(choices=STATUS, default=0)
     pay_end_date = models.DateTimeField(blank=True, null=True, verbose_name='결제완료시간')
-    trade_end = models.BooleanField(default=False, verbose_name='거래완료')
     trade_end_date = models.DateTimeField(blank=True, null=True, verbose_name='거래완료시간')
+
+    # todo: status : 결제, 배송, success, refund
 
 
 class Delivery(models.Model):
@@ -101,8 +171,17 @@ class Delivery(models.Model):
     number = models.TextField(verbose_name='운송장번호')
     mountain = models.BooleanField(verbose_name='산간지역유무')
     trade = models.ForeignKey(Trade, on_delete=models.CASCADE)
+    # todo:
+    # refund도
+
 
 class Refund(models.Model):
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
     receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
 
+
+class Follow(models.Model):
+    _from = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_from', on_delete=models.CASCADE)
+    _to = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_to', on_delete=models.CASCADE)
+    tag = models.ForeignKey(Tag, blank=True, null=True, on_delete=models.CASCADE)
+    is_follow = models.BooleanField(default=True)
