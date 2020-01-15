@@ -48,9 +48,11 @@ THIRD_APPS = [
     'allauth.socialaccount.providers.instagram',
     'allauth.socialaccount.providers.kakao',
 
-    'drf_yasg',
+    # 'drf_yasg',
 
-    'channels',
+    'storages',
+
+    # 'channels',
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS
@@ -118,19 +120,6 @@ USE_L10N = True
 USE_TZ = False
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.0/howto/static-files/
-
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'api', "static"),
-    os.path.join(BASE_DIR, 'accounts', "static"),
-]
-STATIC_ROOT = 'static'
-
-# Media files (Images)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # Default user model
@@ -151,6 +140,12 @@ SITE_ID = 1
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100
 }
+
+APPEND_SLASH = False
+
+
 
