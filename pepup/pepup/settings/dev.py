@@ -47,3 +47,7 @@ DEFAULT_FILE_STORAGE = 'pepup.storage.MediaStorage'
 
 STATIC_ROOT = "https://%s/static/" % AWS_S3_CUSTOM_DOMAIN
 MEDIA_ROOT = "https://%s/media/" % AWS_S3_CUSTOM_DOMAIN
+
+# CORS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = True

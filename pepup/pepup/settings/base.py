@@ -32,7 +32,6 @@ INSTALLED_APPS = [
 SECONDS_APPS = [
     'accounts',
     'api',
-    'chat',
 ]
 
 # package
@@ -53,6 +52,8 @@ THIRD_APPS = [
     'storages',
 
     # 'channels',
+
+    'corsheaders'
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS
@@ -65,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'pepup.urls'
@@ -118,9 +120,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = False
-
-
-
 
 # Default user model
 AUTH_USER_MODEL = 'accounts.User'
