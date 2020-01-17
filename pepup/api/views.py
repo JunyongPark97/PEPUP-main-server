@@ -24,7 +24,10 @@ from .serializers import (
     FilterSerializer,
     MainSerializer,
     LikeSerializer,
-    FollowSerializer
+    FollowSerializer,
+    PayFormSerializer,
+    ItemSerializer,
+    UserinfoSerializer
 )
 from accounts.serializers import UserSerializer
 
@@ -33,6 +36,7 @@ from .Bootpay import BootpayApi
 
 # utils
 from accounts.utils import get_user, get_follower
+from datetime import datetime
 from api.utils import set_filter, add_key_value
 from ast import literal_eval
 
@@ -59,9 +63,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         serializer = MainSerializer(products,many=True)
         return Response(serializer.data)
 
-    def check_thum(self, request):
-        return Response({})
-
     def set_prodThumbnail(self, product, request):
         for thum in request.FILES.getlist('thums'):
             ProdThumbnail.objects.create(
@@ -83,7 +84,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def search(self, request, pk):
-        query = q(name__icontains=pk) | q(seller__nickname__icontains=pk) | q(brand__name__icontains=pk)
+        query = q(name__icontains=pk)
         products = Product.objects.filter(query)
         page = self.paginate_queryset(products)
         if page is not None:
@@ -145,6 +146,60 @@ class ProductViewSet(viewsets.GenericViewSet):
         pass
 
 
+class FollowViewSet(viewsets.GenericViewSet):
+    serializer_class = FollowSerializer
+    pagination_class = pagination.PageNumberPagination
+
+    def list(self, request):
+        user = get_user(request)
+        _toes = Follow.objects.filter(_from=user, tag=None)
+        tags = Follow.objects.filter(_from=user, _to=None)
+        products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
+        products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
+        self.serializer_class = ProductSerializer
+
+        page = self.paginate_queryset(products_toes)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.serializer_class(products_by_tags,many=True)
+        return Response(serializer.data)
+
+    def _check_follow(self,_from, _to, tag):
+        follows = Follow.objects.get(q(_from=_from)&(q(_to=_to)|q(tag=tag)))
+        if follows:
+            return follows
+        else:
+            return False
+
+    def check_follow(self, request):
+        _from = get_user(request)
+        follow = self._check_follow(_from,request.POST['_to'],request.POST['tag'])
+        if follow:
+            return Response(FollowSerializer(follow))
+        return Response({'status':'no following'})
+
+    def _following(self, _from, _to, tag):
+        if _to:
+            _to = get_object_or_404(User,pk=_to)
+            follow, created = Follow.objects.get_or_create(_from=_from, _to=_to)
+        else:
+            tag = get_object_or_404(Tag, pk=tag)
+            follow, created = Follow.objects.get_or_create(_from=_from, tag=tag)
+        if not created:
+            if follow.is_follow:
+                follow.is_follow = False
+            else:
+                follow.is_follow = True
+            follow.save()
+            return FollowSerializer(follow).data
+        return FollowSerializer(follow).data
+
+    def following(self, request):
+        _from = get_user(request)
+        return Response(self._following(_from,_to=request.POST['_to'],tag=request.POST['tag']))
+
+
 class TradeViewSet(viewsets.GenericViewSet):
     queryset = Trade.objects.all()
     serializer_class = TradeSerializer
@@ -172,9 +227,9 @@ class TradeViewSet(viewsets.GenericViewSet):
         return ret_ls
 
     def cart(self, request):
-        buyer = get_user(request)
-        trades = Trade.objects.filter(buyer=buyer)
-        serializer = TradeSerializer(trades, many=True)
+        self.buyer = get_user(request)
+        self.trades = Trade.objects.filter(buyer=self.buyer)
+        serializer = TradeSerializer(self.trades, many=True)
         return Response(self.groupbyseller(serializer.data))
 
     def cancel(self, request):
@@ -186,18 +241,6 @@ class TradeViewSet(viewsets.GenericViewSet):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-class ProductDetail(APIView):
-    def get_object(self, pk):
-        print(get_object_or_404(Product, pk=pk))
-        return get_object_or_404(Product, pk=pk)
-
-    # @authentication_classes(authentication.TokenAuthentication)
-    def get(self, request, pk, format=None):
-        product = self.get_object(pk)
-        serializer = ProductSerializer(product)
-        return Response(serializer.data)
-
-
 class PaymentViewSet(viewsets.GenericViewSet):
     def get_access_token(self):
         bootpay = BootpayApi(application_id='5e05af1302f57e00219c40dd', private_key='wL0YFi+aIVN/wkkV90zSb228IgafRbRcPAV94/Rmu1o=')
@@ -205,9 +248,66 @@ class PaymentViewSet(viewsets.GenericViewSet):
         if result['status'] is 200:
             return bootpay
 
-    def get_payform(self, items):
+    def is_valid_products(self):
+        solded_products = self.products.filter(sold=True)
+        if solded_products:
+            self.trades.filter(product__in=solded_products).delete()
+            self.response = Response({'code': -1, 'result': '재고가 없습니다.'})
+            return False
+        return True
+
+    def _get_payform(self):
+        self.user = get_user(self.request)
+        self.trades = Trade.objects.filter(pk__in=self.request.data.getlist('trades'))
+        if len(self.trades) == 0:
+            self.response = Response({'code': -2, 'result': "데이터가 없습니다."})
+            return False
+        if len(self.trades) == 1:
+            self.name = self.trades[0].product.name
+        else:
+            self.name = self.trades[0].product.name + ' 외 ' + str(len(self.trades) - 1) + '건'
+        self.products = Product.objects.filter(trade__in=self.trades)
+        serializer = PayFormSerializer(
+            data=self.request.data,
+            context={'name': self.name, 'products': self.products, 'user': self.user}
+        )
+        self.payform = serializer
+        return True
+
+    def create_deal(self):
         pass
 
+    def get_payform(self, request):
+        self.request = request
+        if not self._get_payform():
+            return self.response    # set self.payform
+        if not self.is_valid_products():
+            return self.response
+        if self.payform.is_valid():
+            return Response({'code': 1, 'result': self.payform.data})
+        return Response(self.payform.errors)
+
+    def canceled(self, request):
+        pass
+
+    def error(self,request):
+        pass
+
+    def confirm(self, request):
+        self.products = Product.objects.filter(pk__in=request.data.getlist('products'))
+        if not self.is_valid_products():
+            return self.response
+        return Response({"code": -1}, status=status.HTTP_200_OK)
+
+    def done(self, request):
+        trades = Trade.objects.filter(pk__in=request.data.getlist('trades'))
+        products = Product.objects.filter(trades__in=trades)
+        if self.is_valid_products(products):
+            products.update(sold=True)
+            trades.update(status=2)
+
+            return Response({"code": 3}, status=status.HTTP_200_OK)
+        return Response({"code": -1}, status=status.HTTP_200_OK)
 
 
 class PayInfo(APIView):
@@ -285,55 +385,3 @@ class BrandView(APIView):
             return JsonResponse(serializers.data)
 
 
-class FollowViewSet(viewsets.GenericViewSet):
-    serializer_class = FollowSerializer
-    pagination_class = pagination.PageNumberPagination
-
-    def list(self, request):
-        user = get_user(request)
-        _toes = Follow.objects.filter(_from=user, tag=None)
-        tags = Follow.objects.filter(_from=user, _to=None)
-        products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
-        products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
-        self.serializer_class = ProductSerializer
-
-        page = self.paginate_queryset(products_toes)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.serializer_class(products_by_tags,many=True)
-        return Response(serializer.data)
-
-    def _check_follow(self,_from, _to, tag):
-        follows = Follow.objects.get(q(_from=_from)&(q(_to=_to)|q(tag=tag)))
-        if follows:
-            return follows
-        else:
-            return False
-
-    def check_follow(self, request):
-        _from = get_user(request)
-        follow = self._check_follow(_from,request.POST['_to'],request.POST['tag'])
-        if follow:
-            return Response(FollowSerializer(follow))
-        return Response({'status':'no following'})
-
-    def _following(self, _from, _to, tag):
-        if _to:
-            _to = get_object_or_404(User,pk=_to)
-            follow, created = Follow.objects.get_or_create(_from=_from, _to=_to)
-        else:
-            tag = get_object_or_404(Tag, pk=tag)
-            follow, created = Follow.objects.get_or_create(_from=_from, tag=tag)
-        if not created:
-            if follow.is_follow:
-                follow.is_follow = False
-            else:
-                follow.is_follow = True
-            follow.save()
-            return FollowSerializer(follow).data
-        return FollowSerializer(follow).data
-
-    def following(self, request):
-        _from = get_user(request)
-        return Response(self._following(_from,_to=request.POST['_to'],tag=request.POST['tag']))

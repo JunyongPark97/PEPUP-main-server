@@ -50,6 +50,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.CASCADE)
     is_refundable = models.BooleanField(default=False)
     tag = models.ManyToManyField(Tag)
+
     # todo:
     # 환불가능, 사이즈(카테고리화: 남자->XL),
 
@@ -69,8 +70,7 @@ class Product(models.Model):
             breadcrumb[i] = '/'.join(breadcrumb[-1:i - 1:-1])
         return breadcrumb[-1:0:-1]
 
-    def get_discount_price(self):
-        return self.price * (1-self.discount_rate)
+
 
 def img_directory_path(instance, filename):
     return 'user/{}/products/{}'.format(instance.product.seller.email,filename)
@@ -93,6 +93,51 @@ class Like(models.Model):
     # todo :
     # sold 후 delete 불가능하게!
     # def lock_delete():
+
+
+class Delivery(models.Model):
+    STEP1 = 'step1'
+    STEP2 = 'step2'
+    STEP3 = 'step3'
+    STEP4 = 'step4'
+    STEP5 = 'step5'
+
+    states = [
+        (STEP1, '상품인수'),
+        (STEP2, '상품이동중'),
+        (STEP3, '배달지도착'),
+        (STEP4, '배송출발'),
+        (STEP5, '배송완료')
+    ]
+
+    codes = [
+        ('04', 'CJ대한통운'), ('05', '한진택배'), ('08', '롯데택배'),
+        ('01', '우체국택배'), ('06', '로젠택배'), ('11', '일양로지스'),
+        ('12', 'EMS'), ('14', 'UPS'), ('26', 'USPS'),
+        ('22', '대신택배'), ('23', '경동택배'), ('32', '합동택배'),
+        ('46', 'CU 편의점택배'), ('24', 'CVSnet 편의점택배s'),
+        ('16', '한의사랑택배'), ('17', '천일택배'), ('18', '건영택배'),
+        ('28', 'GSMNtoN'), ('29', '에어보이익스프레스'), ('30', 'KGL네트웍스'),
+        ('33', 'DHLarcel'), ('37', '판토스'), ('38', 'ECMS Express'),
+        ('40', '굿투럭'), ('41', 'GSI Express'), ('42', 'CJ대한통운 국제특송'),
+        ('43', '애니트랙'), ('44', '호남택배'), ('47', '우리한방택배'),
+        ('48', 'ACI Express'), ('49', 'ACE Express'), ('50', 'GPS Logix'),
+        ('51', '성원글로벌카고'), ('52', '세방'), ('55', 'EuroParcel'),
+        ('56', 'KGB택배'), ('57', 'Cway Express'), ('58', '하이택배'),
+        ('59', '지오로직'), ('60', 'YJS글로벌(영국)'), ('63', '은하쉬핑'),
+        ('64', 'FLF퍼레버택배'), ('65', 'YJS글로벌(월드)'), ('66', 'Giant Network Group'),
+        ('70', 'LOTOS CORPORATION'), ('71', 'IK물류'), ('72', '성훈물류'), ('73', 'CR로지텍'),
+        ('74', '용마로지스'), ('75', '원더스퀵'), ('76', '대ress'), ('78', '2FastExpress'),
+        ('99', '롯데택배 해외특송')
+    ]   # 택배사코드
+
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sender')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='receiver')
+    address = models.TextField(verbose_name='배송지')
+    state = models.TextField(choices=states)
+    code = models.TextField(choices=codes, verbose_name='택배사코드')
+    number = models.TextField(verbose_name='운송장번호')
+    mountain = models.BooleanField(verbose_name='산간지역유무')
 
 
 class Payment(models.Model):
@@ -125,59 +170,60 @@ class Payment(models.Model):
     purchased_at = models.DateTimeField(blank=True,null=True)
     revoked_at = models.DateTimeField(blank=True,null=True)
     status = models.IntegerField(choices=STATUS, verbose_name='결제상태')
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE, verbose_name='유저')
+
+
+class Deal(models.Model):
+    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
+    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
+    payment = models.ForeignKey(Payment,on_delete=models.CASCADE)
+    total = models.IntegerField(verbose_name='결제금액')
+    remain = models.IntegerField(verbose_name='잔여금')
+    delivery_charge = models.IntegerField(verbose_name='배송비')
+    delivery = models.OneToOneField(Delivery,on_delete=models.CASCADE)
 
 
 class Trade(models.Model):
     STATUS = [
-        (0,'결제전'),
-        (1,'결제중'),
-        (2,'결제완료'),
-        (3,'배송중'),
-        (4,'배송완료'),
-        (5,'거래완료'),
-        (-1,'환불'),
+        (1, '결제전'),
+        (2, '결제완료'),
+        (3, '배송중'),
+        (4, '배송완료'),
+        (5, '거래완료'),
+        (6, '정산완료'),
+        (-1, '환불신청'),
+        (-2, '환불승인'),
+        (-3, '환불완료'),
+        (-20, '환불반려'),
     ]
 
-    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, null=True, blank=True)
+    deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='seller')
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='buyer')
-    status = models.IntegerField(choices=STATUS, default=0)
-    pay_end_date = models.DateTimeField(blank=True, null=True, verbose_name='결제완료시간')
-    trade_end_date = models.DateTimeField(blank=True, null=True, verbose_name='거래완료시간')
-
+    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_seller')
+    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_buyer')
+    status = models.IntegerField(choices=STATUS, default=1)
     # todo: status : 결제, 배송, success, refund
 
 
-class Delivery(models.Model):
-    STEP1 = 'step1'
-    STEP2 = 'step2'
-    STEP3 = 'step3'
-    STEP4 = 'step4'
-    STEP5 = 'step5'
-
-    states = [
-        (STEP1, '상품인수'),
-        (STEP2, '상품이동중'),
-        (STEP3, '배달지도착'),
-        (STEP4, '배송출발'),
-        (STEP5, '배송완료')
+class TradeLog(models.Model):
+    STATUS = [
+        (1, '결제전'),
+        (2, '결제완료'),
+        (3, '배송중'),
+        (4, '배송완료'),
+        (5, '거래완료'),
+        (6, '정산완료'),
+        (-1, '환불신청'),
+        (-2, '환불승인'),
+        (-3, '환불완료'),
+        (-20, '환불반려'),
     ]
 
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    address = models.TextField(verbose_name='배송지')
-    state = models.TextField(choices=states)
-    number = models.TextField(verbose_name='운송장번호')
-    mountain = models.BooleanField(verbose_name='산간지역유무')
-    trade = models.ForeignKey(Trade, on_delete=models.CASCADE)
-    # todo:
-    # refund도
-
-
-class Refund(models.Model):
-    payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
-    receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
+    trade = models.ForeignKey(Trade,on_delete=models.CASCADE)
+    log = models.TextField()
+    status = models.IntegerField(choices=STATUS)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Follow(models.Model):

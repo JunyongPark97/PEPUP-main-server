@@ -99,6 +99,3 @@ class Cashier:
             newlog.refund = refund
         newlog.save()
         return newlog
-
-
-

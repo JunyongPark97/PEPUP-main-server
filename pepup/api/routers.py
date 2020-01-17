@@ -1,5 +1,9 @@
 from rest_framework.routers import Route, DefaultRouter,SimpleRouter, DynamicRoute
-from .views import ProductViewSet, TradeViewSet, FollowViewSet
+from .views import (
+    ProductViewSet, TradeViewSet, FollowViewSet,
+    PaymentViewSet
+)
+
 
 
 class ProductRouter(DefaultRouter):
@@ -62,6 +66,32 @@ class TradeRouter(DefaultRouter):
     ]
 
 
+class PaymentRouter(DefaultRouter):
+    DefaultRouter.routes += [
+        Route(
+            url='{prefix}/payform/',
+            mapping={'post': 'get_payform'},
+            name='{basename}-payform',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/confirm/',
+            mapping={'post': 'confirm'},
+            name='{basename}-confirm',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/done/',
+            mapping={'post': 'done'},
+            name='{basename}-confirm',
+            detail=False,
+            initkwargs={}
+        )
+    ]
+
+
 class FollowRouter(DefaultRouter):
     DefaultRouter.routes += [
         Route(
@@ -86,4 +116,6 @@ router.register('products', ProductViewSet, basename='products')
 router_trades = TradeRouter()
 router_trades.register('trades', TradeViewSet, basename='trades')
 router_follow = FollowRouter()
-router_follow.register('follow',FollowViewSet,basename='follow')
+router_follow.register('follow', FollowViewSet,basename='follow')
+router_payment = PaymentRouter()
+router_payment.register('payment', PaymentViewSet, basename='payment')

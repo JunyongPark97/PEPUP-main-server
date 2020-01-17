@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import (AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from django.conf import settings
 
-from api.models import Refund, Payment
+from api.models import  Payment
 
 
 class UserManager(BaseUserManager):
@@ -71,6 +71,18 @@ class Profile(models.Model):
 
 class DeliveryPolicy(models.Model):
     seller = models.OneToOneField(User, on_delete=models.CASCADE)
+    general = models.IntegerField(verbose_name='일반')
+    mountain = models.IntegerField(verbose_name='산간지역')
+    amount = models.IntegerField(verbose_name='총액조건')
+    volume = models.IntegerField(verbose_name='총량조건')
+
+    def get_delivery_charge(self, amount,volume,mountain=False):
+        ret = 0
+        if mountain:
+            ret += self.mountain
+        if amount < self.amount and volume < self.volume:
+            ret += self.general
+        return ret
 
 
 class WalletLog(models.Model):
@@ -78,6 +90,5 @@ class WalletLog(models.Model):
     amount = models.IntegerField()
     log = models.TextField(verbose_name='로그')
     payment = models.ForeignKey(Payment, blank=True, null=True, on_delete=models.CASCADE)
-    refund = models.ForeignKey(Refund, blank=True, null=True, on_delete=models.CASCADE)
     create_at = models.DateTimeField(auto_now_add=True)
     update_at = models.DateTimeField(auto_now=True)

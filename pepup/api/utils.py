@@ -18,8 +18,8 @@ def set_filter(data):
     return query
 
 
-def add_key_value(querydic,key,value):
+def add_key_value(querydic, key, value):
     querydic[key] = value
-    modifiedQuerydict = QueryDict('',mutable=True)
+    modifiedQuerydict = QueryDict('', mutable=True)
     modifiedQuerydict.update(querydic)
     return modifiedQuerydict

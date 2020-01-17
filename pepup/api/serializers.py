@@ -59,7 +59,6 @@ class ProductSerializer(serializers.ModelSerializer):
         return [{"thumbnail":"http://1567e764.ngrok.io/media/%EC%86%90%EC%A4%80%ED%98%81%20/profile/%E1%84%8C%E1%85%A9%E1%84%8C%E1%85%A6_%E1%84%92%E1%85%A9%E1%84%85%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5_%E1%84%80%E1%85%B3%E1%84%85%E1%85%B5%E1%84%80%E1%85%A9_%E1%84%86%E1%85%AE%E1%86%AF%E1%84%80%E1%85%A9%E1%84%80%E1%85%B5%E1%84%83%E1%85%B3%E1%86%AF.jpg"}]
 
 
-
 class MainSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
     seller = UserSerializer()
@@ -76,16 +75,6 @@ class MainSerializer(serializers.ModelSerializer):
 
 
 class TradeSerializer(serializers.ModelSerializer):
-    choices = [
-        (0, '결제전'),
-        (1, '결제중'),
-        (2, '결제완료'),
-        (3, '배송중'),
-        (4, '배송완료'),
-        (5, '거래완료'),
-        (-1, '결제취소'),
-        (-2, '환불'),
-    ]
     product = ProductSerializer(read_only=True)
     seller = UserSerializer()
     buyer = serializers.StringRelatedField(read_only=True)
@@ -93,9 +82,6 @@ class TradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trade
         fields = ('id','product', 'seller', 'buyer')
-
-class CategorySerializer(serializers.Serializer):
-    pass
 
 
 class FilterSerializer(serializers.Serializer):
@@ -112,3 +98,47 @@ class FollowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = '__all__'
+
+
+class ItemSerializer(serializers.ModelSerializer):
+    item_name = serializers.CharField(source='name')
+    unique = serializers.CharField(source='pk')
+    price = serializers.SerializerMethodField('get_discount_price')
+    qty = serializers.IntegerField(default=1)
+
+    class Meta:
+        model = Product
+        fields = ('item_name','unique', 'price','qty')
+
+    def get_discount_price(self, obj):
+        return obj.price * (1-obj.discount_rate)
+
+class UserinfoSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='nickname')
+    addr = serializers.CharField(default='')
+
+    class Meta:
+        model = User
+        fields = ('username', 'addr', 'email', 'phone')
+
+
+class PayFormSerializer(serializers.Serializer):
+    price = serializers.IntegerField()
+    application_id = serializers.CharField(default="5e05af1302f57e00219c40da")
+    name = serializers.SerializerMethodField()
+    pg = serializers.CharField(default='inicis')
+    method = serializers.CharField(default='')
+    items = serializers.SerializerMethodField()
+    user_info = serializers.SerializerMethodField()
+    order_id = serializers.CharField(default='1')
+
+    def get_name(self,obj):
+        return self.context.get('name')
+
+    def get_items(self,obj):
+        items = self.context.get('products')
+        return ItemSerializer(items, many=True).data
+
+    def get_user_info(self,obj):
+        user_info = self.context.get('user')
+        return UserinfoSerializer(user_info).data
