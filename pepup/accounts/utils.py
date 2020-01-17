@@ -61,7 +61,7 @@ def get_user(request):
 
 
 def get_follower(user):
-    followers = Follow.objects.filter(following_user=user)
+    followers = Follow.objects.filter(_to=user)
     return followers
 
 
