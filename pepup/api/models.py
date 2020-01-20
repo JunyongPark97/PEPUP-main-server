@@ -96,6 +96,7 @@ class Like(models.Model):
 
 
 class Delivery(models.Model):
+    STEP0 = 'step0'
     STEP1 = 'step1'
     STEP2 = 'step2'
     STEP3 = 'step3'
@@ -103,6 +104,7 @@ class Delivery(models.Model):
     STEP5 = 'step5'
 
     states = [
+        (STEP0, '운송장입력전'),
         (STEP1, '상품인수'),
         (STEP2, '상품이동중'),
         (STEP3, '배달지도착'),
@@ -133,9 +135,9 @@ class Delivery(models.Model):
 
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sender')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='receiver')
+    code = models.TextField(choices=codes, verbose_name='택배사코드')
     address = models.TextField(verbose_name='배송지')
     state = models.TextField(choices=states)
-    code = models.TextField(choices=codes, verbose_name='택배사코드')
     number = models.TextField(verbose_name='운송장번호')
     mountain = models.BooleanField(verbose_name='산간지역유무')
 
@@ -153,11 +155,13 @@ class Payment(models.Model):
         (-2,'결제승인실패')
     ]
 
+    order_id = models.IntegerField(primary_key=True, verbose_name='주문번호')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
     receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
-    order_id = models.CharField(max_length=100,verbose_name='주문번호')
+
+
     price = models.IntegerField(verbose_name='결제금액')
     name = models.CharField(max_length=100, verbose_name='대표상품명')
-
     tax_free = models.IntegerField(verbose_name='면세금액')
     remain_price = models.IntegerField(verbose_name='남은금액')
     remain_tax_free = models.IntegerField(verbose_name='남은면세금액')
@@ -170,8 +174,6 @@ class Payment(models.Model):
     purchased_at = models.DateTimeField(blank=True,null=True)
     revoked_at = models.DateTimeField(blank=True,null=True)
     status = models.IntegerField(choices=STATUS, verbose_name='결제상태')
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE, verbose_name='유저')
 
 
 class Deal(models.Model):

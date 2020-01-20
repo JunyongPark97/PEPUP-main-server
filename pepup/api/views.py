@@ -12,8 +12,10 @@ from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
 
 # model
-from accounts.models import User
-from .models import Product, ProdThumbnail, Payment, Brand, Trade,Like,Follow,Tag
+from accounts.models import User, Profile
+from .models import (Product, ProdThumbnail, Payment,
+                     Brand, Trade,Like,Follow,
+                     Tag, Deal, Delivery)
 
 # serializer
 from .serializers import (
@@ -27,7 +29,8 @@ from .serializers import (
     FollowSerializer,
     PayFormSerializer,
     ItemSerializer,
-    UserinfoSerializer
+    UserinfoSerializer,
+    DealSerializer,
 )
 from accounts.serializers import UserSerializer
 
@@ -259,6 +262,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
     def _get_payform(self):
         self.user = get_user(self.request)
         self.trades = Trade.objects.filter(pk__in=self.request.data.getlist('trades'))
+
         if len(self.trades) == 0:
             self.response = Response({'code': -2, 'result': "데이터가 없습니다."})
             return False
@@ -274,9 +278,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         self.payform = serializer
         return True
 
-    def create_deal(self):
-        pass
-
     def get_payform(self, request):
         self.request = request
         if not self._get_payform():
@@ -287,11 +288,44 @@ class PaymentViewSet(viewsets.GenericViewSet):
             return Response({'code': 1, 'result': self.payform.data})
         return Response(self.payform.errors)
 
-    def canceled(self, request):
-        pass
+    def set_address(self):
+        if hasattr(self.request.data, 'address'):
+            self.address = self.request.data['address']
+        else:
+            self.address = get_object_or_404(Profile, user=self.user).address1
 
-    def error(self,request):
-        pass
+    def create_payment(self):
+        self.payment = Payment.objects.create(
+            receipt_id=self.request.data['receipt_id'],
+            user=self.user,
+        )
+
+    def create_delivery(self,seller):
+        self.delivery = Delivery.objects.create(
+            sender=seller,
+            receiver=self.user,
+            address=self.address,
+            state='STEP0',
+            number=None,
+            mountain=self.request.data['mountain']
+        )
+
+    def link_deal(self):
+        for item in self.request.data:  # 1 item = 1 deal
+            self.create_delivery(item['seller'])
+            deal = Deal.objects.create(
+                seller=item['seller'],
+                buyer=self.user,
+                payment=self.payment,
+                total=self.request.data['total'],
+                remain=self.request.data['remain'],
+                delivery=self.delivery
+            )
+            # link deal to payment, and trades to deal
+            self.payment.deal_set.add(deal)
+            for product in item['products']:
+                trade = Trade.objects.get(pk=product['trade_id'])
+                deal.trade_set.add(trade)
 
     def confirm(self, request):
         self.products = Product.objects.filter(pk__in=request.data.getlist('products'))
@@ -300,15 +334,26 @@ class PaymentViewSet(viewsets.GenericViewSet):
         return Response({"code": -1}, status=status.HTTP_200_OK)
 
     def done(self, request):
+        # request = [{seller, trades, total, delivery_charge}]
+        self.request = request
+        self.user = get_user(self.request)
+        self.set_address()
+        self.create_payment()
+        self.link_deal()
+
         trades = Trade.objects.filter(pk__in=request.data.getlist('trades'))
         products = Product.objects.filter(trades__in=trades)
-        if self.is_valid_products(products):
+        if self.is_valid_products():
             products.update(sold=True)
             trades.update(status=2)
-
             return Response({"code": 3}, status=status.HTTP_200_OK)
         return Response({"code": -1}, status=status.HTTP_200_OK)
 
+    def canceled(self, request):
+        pass
+
+    def error(self,request):
+        pass
 
 class PayInfo(APIView):
     # todo : 최적화 필요 토큰을 저장하고 25분마다 생성하고 그 안에서는 있는 토큰 사용할 수 있게

@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from django.http import Http404
-
+from django.conf import settings
 from .models import (Product, Brand, Payment,
                      Trade, Category, ProdThumbnail,
-                     Like, Follow)
+                     Like, Follow, Deal)
 from accounts.models import User
 
 from accounts.serializers import UserSerializer
@@ -113,6 +113,7 @@ class ItemSerializer(serializers.ModelSerializer):
     def get_discount_price(self, obj):
         return obj.price * (1-obj.discount_rate)
 
+
 class UserinfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='nickname')
     addr = serializers.CharField(default='')
@@ -142,3 +143,18 @@ class PayFormSerializer(serializers.Serializer):
     def get_user_info(self,obj):
         user_info = self.context.get('user')
         return UserinfoSerializer(user_info).data
+
+
+class DealSerializer(serializers.ModelSerializer):
+    seller = serializers.PrimaryKeyRelatedField(read_only=True)
+    trades = serializers.SerializerMethodField()
+    total = serializers.IntegerField()
+    delivery_charge = serializers.IntegerField()
+
+    class Meta:
+        model = Deal
+        fields = ['seller', 'trades', 'totol', 'delivery_charge']
+
+    def get_trades(self, obj):
+        trades = obj.trade_set.all()
+        return trades
