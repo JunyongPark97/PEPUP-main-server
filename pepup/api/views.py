@@ -106,16 +106,25 @@ class ProductViewSet(viewsets.GenericViewSet):
         sold_products = Product.objects.filter(seller=product.seller,sold=True)
         like, tf = Like.objects.get_or_create(user=user, product=product,is_liked=False)
         follower = get_follower(product.seller)
+        is_bagged = Trade.objects.filter(product=product, buyer=user)
+        if is_bagged.exists():
+            status = True
+        else:
+            status = False
+
         serializer = ProductSerializer(product)
         return Response({
             'product': serializer.data,
+            'isbagged': status,
             'liked': like.is_liked,
-            'seller': {
-                'id': product.seller.id,
-                'reviews': 0,
-                'sold': len(sold_products),
-                'follower': len(follower),
-            },
+            'general': product.seller.delivery_policy.general,
+            'mountain': product.seller.delivery_policy.mountain,
+            # 'seller': {
+            #     'id': product.seller.id,
+            #     'reviews': 0,
+            #     'sold': len(sold_products),
+            #     'follower': len(follower),
+            # },
         })
 
     def like(self, request, pk):

@@ -176,7 +176,7 @@ class Payment(models.Model):
     status = models.IntegerField(choices=STATUS, verbose_name='결제상태')
 
 
-class Deal(models.Model):
+class Deal(models.Model): #돈 관련 (스토어 별로)
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
     payment = models.ForeignKey(Payment,on_delete=models.CASCADE)
@@ -186,7 +186,7 @@ class Deal(models.Model):
     delivery = models.OneToOneField(Delivery,on_delete=models.CASCADE)
 
 
-class Trade(models.Model):
+class Trade(models.Model): #카트, 상품 하나하나당 아이디 1개씩
     STATUS = [
         (1, '결제전'),
         (2, '결제완료'),
