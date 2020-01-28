@@ -168,13 +168,17 @@ class FollowViewSet(viewsets.GenericViewSet):
         tags = Follow.objects.filter(_from=user, _to=None)
         products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
         products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
-        self.serializer_class = ProductSerializer
 
-        page = self.paginate_queryset(products_toes)
+        follow_list_qs = Product.objects.filter(q(seller_id__in=_toes.values_list('_to',flat=True))|q(tags__in=tags.values_list('tag',flat=True)))
+        follow_ordered_list_qs = follow_list_qs.distint().order_by('created_at')
+
+        self.serializer_class = ProductSerializer  # Follow serializer
+
+        page = self.paginate_queryset(follow_ordered_list_qs)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.serializer_class(products_by_tags,many=True)
+        serializer = self.serializer_class(follow_ordered_list_qs,many=True)
         return Response(serializer.data)
 
     def _check_follow(self,_from, _to, tag):

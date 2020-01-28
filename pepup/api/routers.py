@@ -85,7 +85,7 @@ class PaymentRouter(DefaultRouter):
         Route(
             url='{prefix}/done/',
             mapping={'post': 'done'},
-            name='{basename}-confirm',
+            name='{basename}-done',
             detail=False,
             initkwargs={}
         )
