@@ -1,3 +1,4 @@
+from pepup.loader import load_credential
 from .base import *
 from ..utils import get_server_info_value
 
@@ -12,12 +13,26 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'mondeique_temp',
+        'HOST': load_credential("PEPUP_DATABASE_HOST", ""),
+        'USER': load_credential("PEPUP_DATABASE_USERNAME", ""),
+        'PASSWORD': load_credential("PEPUP_DATABASE_PASSWORD", ""),
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        }
+    },
 }
+
 
 SETTING_PRD_DIC = get_server_info_value("production")
 

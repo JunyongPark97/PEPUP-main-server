@@ -26,6 +26,11 @@ from .permissions import IsOwnerByToken
 from .utils import create_token, SMSManager, get_user
 from .models import PhoneConfirm, User
 from api.models import Product
+
+import json
+import requests
+
+from django.http import HttpResponse, JsonResponse
 # Create your views here.
 
 
@@ -157,7 +162,7 @@ class SignupView(APIView):
         if serializers.is_valid():
             user = serializers.create(serializers.validated_data)
             token = create_token(Token, user)
-            return JsonResponse(dict({"token_key":token.key},**serializers.data))
+            return JsonResponse(dict({"token_key": token.key}, **serializers.data))
         return Response(serializers.errors)
 
 
