@@ -106,16 +106,25 @@ class ProductViewSet(viewsets.GenericViewSet):
         sold_products = Product.objects.filter(seller=product.seller,sold=True)
         like, tf = Like.objects.get_or_create(user=user, product=product,is_liked=False)
         follower = get_follower(product.seller)
+        is_bagged = Trade.objects.filter(product=product, buyer=user)
+        if is_bagged.exists():
+            status = True
+        else:
+            status = False
+
         serializer = ProductSerializer(product)
         return Response({
             'product': serializer.data,
+            'isbagged': status,
             'liked': like.is_liked,
-            'seller': {
-                'id': product.seller.id,
-                'reviews': 0,
-                'sold': len(sold_products),
-                'follower': len(follower),
-            },
+            'general': product.seller.delivery_policy.general,
+            'mountain': product.seller.delivery_policy.mountain,
+            # 'seller': {
+            #     'id': product.seller.id,
+            #     'reviews': 0,
+            #     'sold': len(sold_products),
+            #     'follower': len(follower),
+            # },
         })
 
     def like(self, request, pk):
@@ -159,13 +168,17 @@ class FollowViewSet(viewsets.GenericViewSet):
         tags = Follow.objects.filter(_from=user, _to=None)
         products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
         products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
-        self.serializer_class = ProductSerializer
 
-        page = self.paginate_queryset(products_toes)
+        follow_list_qs = Product.objects.filter(q(seller_id__in=_toes.values_list('_to',flat=True))|q(tags__in=tags.values_list('tag',flat=True)))
+        follow_ordered_list_qs = follow_list_qs.distint().order_by('created_at')
+
+        self.serializer_class = ProductSerializer  # Follow serializer
+
+        page = self.paginate_queryset(follow_ordered_list_qs)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.serializer_class(products_by_tags,many=True)
+        serializer = self.serializer_class(follow_ordered_list_qs,many=True)
         return Response(serializer.data)
 
     def _check_follow(self,_from, _to, tag):

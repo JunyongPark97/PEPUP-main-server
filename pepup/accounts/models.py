@@ -70,7 +70,7 @@ class Profile(models.Model):
 
 
 class DeliveryPolicy(models.Model):
-    seller = models.OneToOneField(User, on_delete=models.CASCADE)
+    seller = models.OneToOneField(User, on_delete=models.CASCADE, related_name='delivery_policy')
     general = models.IntegerField(verbose_name='일반')
     mountain = models.IntegerField(verbose_name='산간지역')
     amount = models.IntegerField(verbose_name='총액조건')

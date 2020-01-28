@@ -1,5 +1,7 @@
 from rest_framework import serializers, exceptions
 from django.contrib.auth import authenticate, get_user_model
+
+from api.models import Product, Follow
 from .models import User, PhoneConfirm, Profile
 from .utils import SMSManager
 from rest_framework.authtoken.models import Token
@@ -96,10 +98,24 @@ class ThumbnailSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
+    sold = serializers.SerializerMethodField()
+    followers = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'nickname', 'email', 'profile']
+        fields = ['id', 'nickname', 'email', 'profile', 'reviews', 'sold', 'followers']
+
+    def get_sold(self, obj):
+        sold_products = Product.objects.filter(seller=obj, sold=True)
+        return sold_products.count()
+
+    def get_reviews(self, obj):
+        return 0
+
+    def get_followers(self, obj):
+        followers = Follow.objects.filter(_to=obj)
+        return followers.count()
 
     def get_profile(self, obj):
         try:
