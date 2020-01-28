@@ -86,7 +86,6 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.request = request
         self.serializer = SignupSerializer(data=request.data)
         if self.serializer.is_valid():
-            print(self.serializer.validated_data)
             self.user = self.serializer.create(self.serializer.validated_data)
             self.token = create_token(self.token_model, self.user)
             self.process_login()

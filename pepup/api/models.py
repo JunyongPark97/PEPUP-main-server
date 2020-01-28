@@ -7,7 +7,6 @@ class Brand(models.Model):
     name = models.CharField(max_length=100, verbose_name='브랜드명')
 
     # todo: 로고 이미지 fields
-
     def __str__(self):
         return self.name
 
@@ -158,7 +157,7 @@ class Payment(models.Model):
     order_id = models.IntegerField(primary_key=True, verbose_name='주문번호')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
     receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
-
+    status = models.IntegerField(choices=STATUS, verbose_name='결제상태')
 
     price = models.IntegerField(verbose_name='결제금액')
     name = models.CharField(max_length=100, verbose_name='대표상품명')
@@ -173,7 +172,6 @@ class Payment(models.Model):
     requested_at = models.DateTimeField(blank=True,null=True)
     purchased_at = models.DateTimeField(blank=True,null=True)
     revoked_at = models.DateTimeField(blank=True,null=True)
-    status = models.IntegerField(choices=STATUS, verbose_name='결제상태')
 
 
 class Deal(models.Model):

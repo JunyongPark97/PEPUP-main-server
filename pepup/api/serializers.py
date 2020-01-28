@@ -10,21 +10,6 @@ from accounts.models import User
 from accounts.serializers import UserSerializer
 
 
-class PaymentSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    def get_user(self, token):
-        try:
-            user = Token.objects.get(key=token).user
-            return user
-        except:
-            raise Http404
-
-    class Meta:
-        model = Payment
-        fields = '__all__'
-
-
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
@@ -131,7 +116,7 @@ class PayFormSerializer(serializers.Serializer):
     method = serializers.CharField(default='')
     items = serializers.SerializerMethodField()
     user_info = serializers.SerializerMethodField()
-    order_id = serializers.CharField(default='1')
+    order_id = serializers.SerializerMethodField()
 
     def get_name(self,obj):
         return self.context.get('name')
@@ -143,6 +128,9 @@ class PayFormSerializer(serializers.Serializer):
     def get_user_info(self,obj):
         user_info = self.context.get('user')
         return UserinfoSerializer(user_info).data
+
+    def get_order_id(self, obj):
+        return {'order_id':self.context.get('order_id')}
 
 
 class DealSerializer(serializers.ModelSerializer):

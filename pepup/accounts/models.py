@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import (AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from django.conf import settings
 
-from api.models import  Payment
+from api.models import Payment
 
 
 class UserManager(BaseUserManager):

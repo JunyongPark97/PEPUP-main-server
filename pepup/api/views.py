@@ -63,7 +63,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         if page is not None:
             serializer = self.get_serializer(page,many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = MainSerializer(products,many=True)
+        serializer = MainSerializer(products, many=True)
         return Response(serializer.data)
 
     def set_prodThumbnail(self, product, request):
@@ -259,10 +259,23 @@ class PaymentViewSet(viewsets.GenericViewSet):
             return False
         return True
 
+    def create_payment(self):
+        self.payment = Payment.objects.create(
+            status=0,
+            user=self.user,
+        )
+
+    def update_payment(self):
+        self.payment = Payment.objects.get(order_id=self.request.data['order_id'])
+        bootpay = self.get_access_token()
+        receipt_id = self.request.data['receipt_id']
+        info_result = bootpay.verify(receipt_id)
+        if info_result['status'] is 200:
+            info_result['data']
+
     def _get_payform(self):
         self.user = get_user(self.request)
         self.trades = Trade.objects.filter(pk__in=self.request.data.getlist('trades'))
-
         if len(self.trades) == 0:
             self.response = Response({'code': -2, 'result': "데이터가 없습니다."})
             return False
@@ -271,11 +284,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
         else:
             self.name = self.trades[0].product.name + ' 외 ' + str(len(self.trades) - 1) + '건'
         self.products = Product.objects.filter(trade__in=self.trades)
-        serializer = PayFormSerializer(
+        self.create_payment()
+        self.payform = PayFormSerializer(
             data=self.request.data,
-            context={'name': self.name, 'products': self.products, 'user': self.user}
+            context={'name': self.name,
+                     'products': self.products,
+                     'user': self.user,
+                     'order_id': self.payment.order_id}
         )
-        self.payform = serializer
         return True
 
     def get_payform(self, request):
@@ -294,12 +310,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         else:
             self.address = get_object_or_404(Profile, user=self.user).address1
 
-    def create_payment(self):
-        self.payment = Payment.objects.create(
-            receipt_id=self.request.data['receipt_id'],
-            user=self.user,
-        )
-
     def create_delivery(self,seller):
         self.delivery = Delivery.objects.create(
             sender=seller,
@@ -311,34 +321,35 @@ class PaymentViewSet(viewsets.GenericViewSet):
         )
 
     def link_deal(self):
-        for item in self.request.data:  # 1 item = 1 deal
-            self.create_delivery(item['seller'])
-            deal = Deal.objects.create(
-                seller=item['seller'],
+        for deal in self.request.data.getlist('deal'):  # 1 item = 1 deal
+            self.create_delivery(deal['seller'])
+            self.deal = Deal.objects.create(
+                seller=deal['seller'],
                 buyer=self.user,
                 payment=self.payment,
-                total=self.request.data['total'],
-                remain=self.request.data['remain'],
+                total=deal['total'],
+                remain=deal['total'],
                 delivery=self.delivery
             )
             # link deal to payment, and trades to deal
             self.payment.deal_set.add(deal)
-            for product in item['products']:
-                trade = Trade.objects.get(pk=product['trade_id'])
-                deal.trade_set.add(trade)
+            for trade in self.deal['trades']:
+                trade = Trade.objects.get(pk=trade)
+                self.deal.trade_set.add(trade)
 
     def confirm(self, request):
         self.products = Product.objects.filter(pk__in=request.data.getlist('products'))
         if not self.is_valid_products():
+            self.create_payment()
             return self.response
         return Response({"code": -1}, status=status.HTTP_200_OK)
 
     def done(self, request):
-        # request = [{seller, trades, total, delivery_charge}]
+        # request = {receipt_id, address, deal:[{seller, trades, total, delivery_charge}]}
         self.request = request
         self.user = get_user(self.request)
         self.set_address()
-        self.create_payment()
+        self.update_payment()
         self.link_deal()
 
         trades = Trade.objects.filter(pk__in=request.data.getlist('trades'))
