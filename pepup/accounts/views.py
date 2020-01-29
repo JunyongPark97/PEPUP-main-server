@@ -21,7 +21,7 @@ from .serializers import (
     LoginSerializer,
     PhoneConfirmSerializer,
     SignupSerializer,
-ProfileSerializer
+    ProfileSerializer
 )
 from .permissions import IsOwnerByToken
 from .utils import create_token, SMSManager, get_user
@@ -98,6 +98,10 @@ class AccountViewSet(viewsets.GenericViewSet):
             return self.get_response()
         return Response(self.serializer.errors)
 
+    def reset_password(self,request):
+
+
+
     def _confirmsms(self):
         # confirm_key에
         if self.request.data.get('confirm_key'):
@@ -140,29 +144,42 @@ class AccountViewSet(viewsets.GenericViewSet):
 
     def confirmsms(self, request):
         self.user = get_user(request)
+        # todo: 유저의 휴대전화 정보가 없을 경우 처리
         self._confirmsms()
         return self.response
 
-    # def _create_and_update_profile(self):
-    #     self.serializer = ProfileSerializer(data=self.request.data, partial=True)
-    #     if self.serializer.is_valid():
-    #         if Profile.objects.filter(user=self.user):
-    #             self.serializer.update()
-    #             self.response = Response({'status': _("Successfully_update")}, status=status.HTTP_200_OK)
-    #         else:
-    #             self.serializer.save(
-    #                 user=self.user
-    #             )
-    #             self.response = Response({'status': _("Successfully_create")}, status=status.HTTP_200_OK)
-    #
-    #     else:
-    #         self.response = Response(self.serializer.errors)
-    #
-    # def create_and_update_profile(self, request):
-    #     self.request = request
-    #     self.user = get_user(request)
-    #     self._create_and_update_profile()
-    #     return self.response
+    def get_profile(self):
+        try:
+            self.profile = Profile.objects.get(user=self.user)
+        except:
+            self.profile = None
+
+    def _create_and_update_profile(self):
+        if self.profile:
+            self.serializer = ProfileSerializer(self.profile, data=self.request.data, partial=True)
+        else:
+            self.serializer = ProfileSerializer(data=self.request.data, partial=True)
+        if self.serializer.is_valid():
+            self.serializer.save(user=self.user)
+            if self.profile:
+                self.response = Response({'status': _("Successfully updated")}, status=status.HTTP_200_OK)
+            else:
+                self.response = Response({'status': _("Successfully created")}, status=status.HTTP_200_OK)
+        else:
+            self.response = Response(self.serializer.errors)
+
+    def profile(self, request):
+        self.request = request
+        self.user = get_user(request)
+        self.get_profile()
+        # profile create and update
+        if request.method == 'POST':
+            self._create_and_update_profile()
+        # profile get
+        elif request.method == 'GET':
+            self.serializer = ProfileSerializer(self.profile)
+            self.response = Response({'profile': self.serializer.data})
+        return self.response
 
 
 class LogoutView(APIView):

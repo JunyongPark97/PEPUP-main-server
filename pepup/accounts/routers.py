@@ -34,7 +34,8 @@ class AccountRouter(DefaultRouter):
         ),
         Route(
             url='{prefix}/profile/',
-            mapping={'post': 'create_and_update_profile'},
+            mapping={'get': 'profile',
+                     'post': 'profile'},
             name='{basename}-update-profile',
             detail=False,
             initkwargs={}
