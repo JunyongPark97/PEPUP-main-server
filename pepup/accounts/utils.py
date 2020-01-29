@@ -6,13 +6,14 @@ from .models import PhoneConfirm, WalletLog
 from api.models import Follow
 from rest_framework.authtoken.models import Token
 from django.db.models import Sum
+from .loader import load_credential
 
 class SMSManager():
     # todo: accesskey랑 발신번호 및 시크릿 키 초기화 필요
-    serviceId = "ncp:sms:kr:257791040520:pepup"
-    access_key = "03i7TYTJ2juHkLqENoxy"
-    secret_key = "fa061bde494543d9a8f4b6db18da9c6c"
-    _from = "01077407351"  # 발신번호
+    serviceId = load_credential("serviceId")
+    access_key = load_credential("access_key")
+    secret_key = load_credential("secret_key")
+    _from = load_credential("_from")  # 발신번호
     url = "https://api-sens.ncloud.com/v1/sms/services/{}/messages".format(serviceId)
     headers = {
         'Content-Type': 'application/json; charset=utf-8',

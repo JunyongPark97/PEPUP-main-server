@@ -11,6 +11,8 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
 
+from .loader import load_credential
+
 # model
 from accounts.models import User, Profile
 from .models import (Product, ProdThumbnail, Payment,
@@ -259,7 +261,7 @@ class TradeViewSet(viewsets.GenericViewSet):
 
 class PaymentViewSet(viewsets.GenericViewSet):
     def get_access_token(self):
-        bootpay = BootpayApi(application_id='5e05af1302f57e00219c40dd', private_key='wL0YFi+aIVN/wkkV90zSb228IgafRbRcPAV94/Rmu1o=')
+        bootpay = BootpayApi(application_id=load_credential("application_id"), private_key=load_credential("private_key"))
         result = bootpay.get_access_token()
         if result['status'] is 200:
             return bootpay
@@ -383,7 +385,7 @@ class PayInfo(APIView):
     # todo : 최적화 필요 토큰을 저장하고 25분마다 생성하고 그 안에서는 있는 토큰 사용할 수 있게
     # todo : private_key 초기화 및 가져오는 처리도 필요
     def get_access_token(self):
-        bootpay = BootpayApi(application_id='5e05af1302f57e00219c40dd', private_key='wL0YFi+aIVN/wkkV90zSb228IgafRbRcPAV94/Rmu1o=')
+        bootpay = BootpayApi(application_id=load_credential("application_id"), private_key=load_credential("private_key"))
         result = bootpay.get_access_token()
         if result['status'] is 200:
             return bootpay
@@ -419,7 +421,7 @@ class PayInfo(APIView):
 class RefundInfo(APIView):
     # todo: 부트페이 계정 초기화 및 일반화
     def get_access_token(self):
-        bootpay = BootpayApi(application_id='5e05af1302f57e00219c40dd', private_key='wL0YFi+aIVN/wkkV90zSb228IgafRbRcPAV94/Rmu1o=')
+        bootpay = BootpayApi(application_id=load_credential("application_id"), private_key=load_credential("private_key"))
         result = bootpay.get_access_token()
         if result['status'] is 200:
             return bootpay
