@@ -25,6 +25,20 @@ class AccountRouter(DefaultRouter):
             detail=False,
             initkwargs={}
         ),
+        Route(
+            url='{prefix}/confirmsms/',
+            mapping={'post': 'confirmsms'},
+            name='{basename}-confirmsms',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/profile/',
+            mapping={'post': 'create_and_update_profile'},
+            name='{basename}-update-profile',
+            detail=False,
+            initkwargs={}
+        ),
     ]
 
 

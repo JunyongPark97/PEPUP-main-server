@@ -20,11 +20,12 @@ from .serializers import (
     TokenSerializer,
     LoginSerializer,
     PhoneConfirmSerializer,
-    SignupSerializer
+    SignupSerializer,
+ProfileSerializer
 )
 from .permissions import IsOwnerByToken
 from .utils import create_token, SMSManager, get_user
-from .models import PhoneConfirm, User
+from .models import PhoneConfirm, User, Profile
 from api.models import Product
 
 import json
@@ -97,37 +98,71 @@ class AccountViewSet(viewsets.GenericViewSet):
             return self.get_response()
         return Response(self.serializer.errors)
 
-    def confirmSMS(self, request, confirm_key=None):
-        user = get_user(request)
-
-        if confirm_key:
-            phoneconfirm = PhoneConfirm.objects.get(user=user)
+    def _confirmsms(self):
+        # confirm_key에
+        if self.request.data.get('confirm_key'):
+            phoneconfirm = PhoneConfirm.objects.get(user=self.user)
             serializer = PhoneConfirmSerializer(phoneconfirm)
             if phoneconfirm.is_confirmed:
-                response = Response({"status": _("Already confirmed")},
+                self.response = Response({"status": _("Already confirmed")},
                                     status=status.HTTP_200_OK)
             elif serializer.timeout(phoneconfirm):
-                response = Response({"status": _("Session_finished")},
+                self.response = Response({"status": _("Session_finished")},
                                     status=status.HTTP_200_OK)
             else:
-                if phoneconfirm.key == confirm_key:
-                    phoneconfirm.is_confirmed=True
+                if phoneconfirm.key == self.request.data['confirm_key']:
+                    phoneconfirm.is_confirmed = True
                     phoneconfirm.save()
-                    response = JsonResponse(serializer.data)
+                    self.response = Response(serializer.data)
                 else:
-                    return Response({"error": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
+                    self.response = Response({"error": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 처음 phoneconfirm 만드는 부분,
         else:
             try:
-                phoneconfirm = PhoneConfirm.objects.get(user=user)
-                response = Response({"status": _("Already Exist"),
-                                     "key": phoneconfirm.key},status=status.HTTP_200_OK)
+                phoneconfirm = PhoneConfirm.objects.get(user=self.user)
+
+                # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
+                # 아닐 경우, 기존 key 다시 전달
+                if phoneconfirm.is_confirmed:
+                    self.response = Response({"status": _("Already confirmed")},status=status.HTTP_200_OK)
+                elif PhoneConfirmSerializer().timeout(phoneconfirm):
+                    self.response = Response({"status": _("Session_finished")}, status=status.HTTP_200_OK)
+                else:
+                    self.response = Response({"status": _("Already Exist"),
+                                          "key": phoneconfirm.key},status=status.HTTP_200_OK)
+                # 최초 -> sms전달
             except PhoneConfirm.DoesNotExist:
-                smsmanager = SMSManager(user)
-                smsmanager.send_sms(user.phone)
-                response = Response({"status": _("Successfully_send: {}").format(smsmanager.confirm_key)},
+                smsmanager = SMSManager(user=self.user)
+                smsmanager.send_sms(self.user.phone)
+                self.response = Response({"status": _("Successfully_send: {}").format(smsmanager.confirm_key)},
                                 status=status.HTTP_200_OK)
 
-        return response
+    def confirmsms(self, request):
+        self.user = get_user(request)
+        self._confirmsms()
+        return self.response
+
+    # def _create_and_update_profile(self):
+    #     self.serializer = ProfileSerializer(data=self.request.data, partial=True)
+    #     if self.serializer.is_valid():
+    #         if Profile.objects.filter(user=self.user):
+    #             self.serializer.update()
+    #             self.response = Response({'status': _("Successfully_update")}, status=status.HTTP_200_OK)
+    #         else:
+    #             self.serializer.save(
+    #                 user=self.user
+    #             )
+    #             self.response = Response({'status': _("Successfully_create")}, status=status.HTTP_200_OK)
+    #
+    #     else:
+    #         self.response = Response(self.serializer.errors)
+    #
+    # def create_and_update_profile(self, request):
+    #     self.request = request
+    #     self.user = get_user(request)
+    #     self._create_and_update_profile()
+    #     return self.response
 
 
 class LogoutView(APIView):
