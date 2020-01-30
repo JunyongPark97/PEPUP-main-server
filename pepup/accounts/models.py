@@ -77,6 +77,10 @@ class Profile(models.Model):
     introduce = models.TextField(verbose_name='소개')
 
 
+class Address(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+
 class DeliveryPolicy(models.Model):
     seller = models.OneToOneField(User, on_delete=models.CASCADE, related_name='delivery_policy')
     general = models.IntegerField(verbose_name='일반')

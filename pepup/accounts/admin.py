@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.utils.translation import ugettext_lazy as _
 
-from .models import User, PhoneConfirm, Profile, WalletLog
+from .models import User, PhoneConfirm, Profile, WalletLog, DeliveryPolicy
 
 
 @admin.register(User)
@@ -26,6 +26,12 @@ class UserAdmin(DjangoUserAdmin):
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
 
+
+class DeliveryPolicyAdmin(admin.ModelAdmin):
+    list_display = ['seller','general','mountain','amount','volume']
+
+
 admin.site.register(PhoneConfirm)
 admin.site.register(Profile)
 admin.site.register(WalletLog)
+admin.site.register(DeliveryPolicy,DeliveryPolicyAdmin)
