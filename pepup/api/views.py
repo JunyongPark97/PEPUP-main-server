@@ -79,7 +79,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         brand = get_object_or_404(Brand, id=int(request.POST['brand_id']))
         serializer = ProductSerializer(data=request.data,partial=True)
         if serializer.is_valid():
-            product=serializer.save(
+            product = serializer.save(
                 seller=seller,
                 brand=brand
             )

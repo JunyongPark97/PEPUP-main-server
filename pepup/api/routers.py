@@ -37,7 +37,6 @@ class ProductRouter(DefaultRouter):
             initkwargs={}
         ),
     ]
-    DefaultRouter.routes.sort(reverse=True)
 
 
 class TradeRouter(DefaultRouter):

@@ -33,6 +33,16 @@ class Tag(models.Model):
     def __str__(self):
         return self.tag
 
+# todo: size
+# class Size(models.Model):
+#     genders = [
+#         (1, 'unisex'),
+#         (2, 'man'),
+#         (3, 'woman'),
+#     ]
+#
+#     gender = models.IntegerField(choices=genders)
+
 
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name='상품명')
