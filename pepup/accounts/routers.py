@@ -54,6 +54,21 @@ class AccountRouter(DefaultRouter):
             detail=False,
             initkwargs={}
         ),
+        Route(
+            url='{prefix}/search_address/',
+            mapping={'post': 'search_address'},
+            name='{basename}-search-address',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/set_address/',
+            mapping={'post': 'set_address'},
+            name='{basename}-set-address',
+            detail=False,
+            initkwargs={}
+        ),
+
     ]
 
 

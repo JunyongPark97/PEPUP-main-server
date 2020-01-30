@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.utils.translation import ugettext_lazy as _
 
-from .models import User, PhoneConfirm, Profile, WalletLog, DeliveryPolicy
+from .models import User, PhoneConfirm, Profile, WalletLog, DeliveryPolicy,Address
 
 
 @admin.register(User)
@@ -35,3 +35,4 @@ admin.site.register(PhoneConfirm)
 admin.site.register(Profile)
 admin.site.register(WalletLog)
 admin.site.register(DeliveryPolicy,DeliveryPolicyAdmin)
+admin.site.register(Address)

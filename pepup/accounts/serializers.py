@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings
 
 from api.models import Product, Follow
-from .models import User, PhoneConfirm, Profile,SmsConfirm
+from .models import User, PhoneConfirm, Profile,SmsConfirm, Address
 from .utils import SMSManager
 from rest_framework.authtoken.models import Token
 from django.conf import settings
@@ -142,3 +142,20 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ['user', 'thumbnail_img', 'background_img','address1','address2','introduce']
+
+
+class CommonSerializer(serializers.Serializer):
+    totalCount = serializers.IntegerField()
+    currentPage = serializers.IntegerField()
+
+
+class SearchAddrSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['zipNo', 'roadAddr', 'jibunAddr']
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['user','zipNo', 'roadAddr', 'jibunAddr','detailAddr']

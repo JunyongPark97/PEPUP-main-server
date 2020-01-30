@@ -72,14 +72,15 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     thumbnail_img = models.ImageField(upload_to=img_directory_path_profile)
     background_img = models.ImageField(upload_to=img_directory_path_profile)
-    address1 = models.TextField(verbose_name='주소1')
-    address2 = models.TextField(verbose_name='주소2')
     introduce = models.TextField(verbose_name='소개')
 
 
 class Address(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
+    zipNo = models.CharField(max_length=10, verbose_name='우편번호')
+    roadAddr = models.TextField(verbose_name='도로명주소')
+    jibunAddr = models.TextField(verbose_name='지번주소')
+    detailAddr = models.TextField(verbose_name='상세주소')
 
 class DeliveryPolicy(models.Model):
     seller = models.OneToOneField(User, on_delete=models.CASCADE, related_name='delivery_policy')

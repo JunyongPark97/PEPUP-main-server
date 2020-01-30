@@ -22,11 +22,14 @@ from accounts.serializers import (
     PhoneConfirmSerializer,
     SignupSerializer,
     ProfileSerializer,
-    SmsConfirmSerializer
+    SmsConfirmSerializer,
+    AddressSerializer,
+    SearchAddrSerializer,
+    CommonSerializer,
 )
 from .permissions import IsOwnerByToken
-from .utils import create_token, SMSManager, get_user, generate_random_key
-from accounts.models import PhoneConfirm, User, Profile, SmsConfirm
+from .utils import create_token, SMSManager, get_user, generate_random_key, JusoMaster
+from accounts.models import PhoneConfirm, User, Profile, SmsConfirm, Address
 from api.models import Product
 
 import json
@@ -235,6 +238,32 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.serializer = ProfileSerializer(self.profile)
             self.response = Response({'profile': self.serializer.data})
         return self.response
+
+    def search_address(self, request):
+        jusomaster = JusoMaster()
+        data = jusomaster.search_juso(
+            keyword=request.data.get('keyword'),
+            currentpage=request.data.get('currentpage'),
+            countperpage=request.data.get('countperpage')
+        )
+        serializer = SearchAddrSerializer(data=data, many=True)
+        if serializer.is_valid():
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
+    def get_address(self):
+        pass
+
+    def set_address(self,request):
+        self.user = get_user(request)
+        serializer = AddressSerializer(data=request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save(
+                user=self.user
+            )
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
 
 
 class LogoutView(APIView):

@@ -7,6 +7,7 @@ from api.models import Follow
 from rest_framework.authtoken.models import Token
 from django.db.models import Sum
 from .loader import load_credential
+import requests
 
 class SMSManager():
     # todo: accesskey랑 발신번호 및 시크릿 키 초기화 필요
@@ -121,3 +122,18 @@ class Cashier:
             newlog.payment = payment
         newlog.save()
         return newlog
+
+
+class JusoMaster:
+    url = "http://www.juso.go.kr/addrlink/addrLinkApi.do"
+    confmKey = 'U01TX0FVVEgyMDIwMDEzMDIxMDA1MDEwOTQyNzQ='
+
+    def search_juso(self, keyword='', currentpage=1, countperpage=10):
+        res = requests.post(self.url, data={
+            'confmKey': self.confmKey,
+            'keyword': keyword,
+            'currentPage': currentpage,
+            'countPerPage': countperpage,
+            'resultType': 'json'
+        })
+        return res.json()['results']['juso']
