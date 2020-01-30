@@ -53,7 +53,10 @@ THIRD_APPS = [
 
     # 'channels',
 
-    'corsheaders'
+    'corsheaders',
+    
+    # 'toolbar'
+    'debug_toolbar',
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS
@@ -67,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'pepup.urls'
@@ -142,10 +146,10 @@ REST_FRAMEWORK = {
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 100
+    'PAGE_SIZE': 10
 }
 
 APPEND_SLASH = False
 
-
-
+# toolbar
+INTERNAL_IPS = ('127.0.0.1',)
