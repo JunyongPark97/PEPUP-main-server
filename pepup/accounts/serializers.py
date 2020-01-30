@@ -2,7 +2,7 @@ from rest_framework import serializers, exceptions
 from django.contrib.auth import authenticate, get_user_model
 
 from api.models import Product, Follow
-from .models import User, PhoneConfirm, Profile
+from .models import User, PhoneConfirm, Profile,SmsConfirm
 from .utils import SMSManager
 from rest_framework.authtoken.models import Token
 from django.conf import settings
@@ -29,6 +29,20 @@ class SignupSerializer(serializers.ModelSerializer):
 class PhoneConfirmSerializer(serializers.ModelSerializer):
     class Meta:
         model = PhoneConfirm
+        fields = '__all__'
+
+    # 세션완료, 5분
+    def timeout(self, instance):
+        if not instance.is_confirmed:
+            if timezone.now().timestamp() - instance.created_at.timestamp() >= 300:
+                instance.delete()
+                return True
+        return False
+
+
+class SmsConfirmSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SmsConfirm
         fields = '__all__'
 
     # 세션완료, 5분

@@ -33,6 +33,20 @@ class AccountRouter(DefaultRouter):
             initkwargs={}
         ),
         Route(
+            url='{prefix}/find_email/',
+            mapping={'post': 'find_email'},
+            name='{basename}-find-email',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/reset_password/',
+            mapping={'post': 'reset_password'},
+            name='{basename}-reset-password',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
             url='{prefix}/profile/',
             mapping={'get': 'profile',
                      'post': 'profile'},

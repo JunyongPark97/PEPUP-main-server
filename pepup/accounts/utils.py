@@ -2,7 +2,7 @@ import string
 import random
 import requests
 import json
-from .models import PhoneConfirm, WalletLog
+from accounts.models import PhoneConfirm, WalletLog, SmsConfirm
 from api.models import Follow
 from rest_framework.authtoken.models import Token
 from django.db.models import Sum
@@ -21,7 +21,7 @@ class SMSManager():
     }
 
     def __init__(self, user):
-        self.confirm_key = self.generate_random_key()
+        self.confirm_key = ""
         self.user = user
         self.body = {
             "type": "SMS",
@@ -29,7 +29,7 @@ class SMSManager():
             "from": self._from,
             "to": [],
             "subject": "",
-            "content": "[몽데이크] [인증번호:{}] 인증번호를 입력해주세요".format(self.confirm_key)
+            "content": ""
         }
 
     def create_instance(self):
@@ -37,15 +37,36 @@ class SMSManager():
         phone_confirm.save()
         return phone_confirm
 
-    def generate_random_key(self, length=6):
-        return ''.join(random.choices(string.digits, k=length))
+    def create_smsconfirm(self,for_email=False,for_password=False):
+        smsconfirm = SmsConfirm.objects.create(
+            user=self.user,
+            key=self.confirm_key,
+            for_email=for_email,
+            for_password=for_password
+        )
+        return smsconfirm
+
+    def generate_random_key(self):
+            return ''.join(random.choices(string.digits, k=6))
+
+    def set_confirm_key(self):
+        self.confirm_key = self.generate_random_key()
+
+    def set_content(self):
+        self.set_confirm_key()
+        self.body['content'] = "[몽데이크] [인증번호:{}] 인증번호를 입력해주세요".format(self.confirm_key)
 
     def send_sms(self, to=None):
-        if not self.body['to']:
+        if self.user:
+            self.body['to'].append(self.user.phone)
+        elif not self.body['to']:
             self.body['to'].append(to)
-        self.create_instance()
-        res = requests.post(self.url, headers=self.headers, data=json.dumps(self.body, ensure_ascii = False).encode('utf-8'))
+        res = requests.post(self.url, headers=self.headers, data=json.dumps(self.body, ensure_ascii=False).encode('utf-8'))
         return res
+
+
+def generate_random_key(length=10):
+    return ''.join(random.choices(string.digits+string.ascii_letters, k=length))
 
 
 def create_token(token_model, user):
@@ -68,25 +89,27 @@ def get_follower(user):
 class Cashier:
     def __init__(self, user):
         self.user = user
-        self.walletlogs = WalletLog.objects.filter(user=user)
-
-    def sum_logs(self):
-        self.walletlogs.aggregate(Sum('amount'))
+        self.walletlogs = self.get_logs()
+        self.sum = self.sum_logs()
 
     def get_logs(self):
-        ret = []
-        for item in self.walletlogs:
-            ret.append(+item.log)
-        return ret
+        return WalletLog.objects.filter(user=self.user)
+
+    def sum_logs(self):
+        return self.walletlogs.aggregate(Sum('amount'))['amount__sum']
 
     def is_validated(self, amount):
         if self.sum_logs() + amount >= 0:
             return True
         return False
 
-    def create_log(self, amount, log, payment, refund):
+    def write_log(self):
+        if self.walletlogs:
+            pass
+
+    def create_log(self, amount, log='', payment=None):
         if amount < 0:
-            if self.is_validated(payment):
+            if self.is_validated(amount):
                 raise ValueError
         newlog = WalletLog(
             user=self.user,
@@ -95,7 +118,5 @@ class Cashier:
         )
         if payment:
             newlog.payment = payment
-        if refund:
-            newlog.refund = refund
         newlog.save()
         return newlog

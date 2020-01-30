@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import (AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from django.conf import settings
-
-from api.models import Payment
+from pepup.storage import PrivateMediaStorage
+from api.models import Deal
 
 
 class UserManager(BaseUserManager):
@@ -56,6 +56,15 @@ class PhoneConfirm(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class SmsConfirm(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    key = models.CharField(max_length=6)
+    is_confirmed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    for_email = models.BooleanField(default=False)
+    for_password = models.BooleanField(default=False)
+
+
 def img_directory_path_profile(instance, filename):
     return 'user/{}/profile/{}'.format(instance.user.email, filename)
 
@@ -85,10 +94,14 @@ class DeliveryPolicy(models.Model):
         return ret
 
 
+def log_path(instance, filename):
+    return 'wallet/{}/wallet.log'.format(instance.user.email)
+
+
 class WalletLog(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
     amount = models.IntegerField()
     log = models.TextField(verbose_name='로그')
-    payment = models.ForeignKey(Payment, blank=True, null=True, on_delete=models.CASCADE)
-    create_at = models.DateTimeField(auto_now_add=True)
-    update_at = models.DateTimeField(auto_now=True)
+    Deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
