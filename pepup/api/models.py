@@ -154,7 +154,6 @@ class Payment(models.Model):
         (-2,'결제승인실패')
     ]
 
-    order_id = models.IntegerField(primary_key=True, verbose_name='주문번호')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
     receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
     status = models.IntegerField(choices=STATUS, verbose_name='결제상태')

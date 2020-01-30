@@ -22,7 +22,6 @@ from .models import (Product, ProdThumbnail, Payment,
 # serializer
 from .serializers import (
     ProductSerializer,
-    PaymentSerializer,
     TradeSerializer,
     BrandSerializer,
     FilterSerializer,
