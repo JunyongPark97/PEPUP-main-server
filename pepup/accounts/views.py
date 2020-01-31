@@ -93,13 +93,11 @@ class AccountViewSet(viewsets.GenericViewSet):
         return response
 
     def signup(self, request):
-        self.request = request
-        self.serializer = SignupSerializer(data=request.data)
+        self.user = get_user(request)
+        self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
         if self.serializer.is_valid():
-            self.user = self.serializer.create(self.serializer.validated_data)
-            self.token = create_token(self.token_model, self.user)
-            self.process_login()
-            return self.get_response()
+            self.serializer.save()
+            return Response({'status':_('Successfully_signup')},status=status.HTTP_200_OK)
         return Response(self.serializer.errors)
 
     def _find_email(self):
@@ -159,51 +157,63 @@ class AccountViewSet(viewsets.GenericViewSet):
                                  status=status.HTTP_200_OK)
 
     def _confirmsms(self):
-        # confirm_key에
-        if self.request.data.get('confirm_key'):
-            phoneconfirm = PhoneConfirm.objects.get(user=self.user)
-            serializer = PhoneConfirmSerializer(phoneconfirm)
-            if phoneconfirm.is_confirmed:
-                self.response = Response({"status": _("Already confirmed")},
-                                    status=status.HTTP_200_OK)
-            elif serializer.timeout(phoneconfirm):
-                self.response = Response({"status": _("Session_finished")},
-                                    status=status.HTTP_200_OK)
-            else:
-                if phoneconfirm.key == self.request.data['confirm_key']:
-                    phoneconfirm.is_confirmed = True
-                    phoneconfirm.save()
-                    self.response = Response(serializer.data)
-                else:
-                    self.response = Response({"error": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 처음 phoneconfirm 만드는 부분,
-        else:
-            try:
-                phoneconfirm = PhoneConfirm.objects.get(user=self.user)
-
-                # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
-                # 아닐 경우, 기존 key 다시 전달
-                if phoneconfirm.is_confirmed:
-                    self.response = Response({"status": _("Already confirmed")},status=status.HTTP_200_OK)
-                elif PhoneConfirmSerializer().timeout(phoneconfirm):
-                    self.response = Response({"status": _("Session_finished")}, status=status.HTTP_200_OK)
-                else:
-                    self.response = Response({"status": _("Already Exist"),
-                                          "key": phoneconfirm.key},status=status.HTTP_200_OK)
-                # 최초 -> sms전달
-            except PhoneConfirm.DoesNotExist:
-                smsmanager = SMSManager(user=self.user)
-                smsmanager.set_content()
-                smsmanager.create_instance()
-                smsmanager.send_sms(self.user.phone)
-                self.response = Response({"status": _("Successfully_send: {}").format(smsmanager.confirm_key)},
+        phoneconfirm = PhoneConfirm.objects.get(user=self.user)
+        serializer = PhoneConfirmSerializer(phoneconfirm)
+        if phoneconfirm.is_confirmed:
+            self.response = Response({"status": _("Already confirmed")},
                                 status=status.HTTP_200_OK)
+        elif serializer.timeout(phoneconfirm):
+            self.response = Response({"status": _("Session_finished")},
+                                status=status.HTTP_200_OK)
+        else:
+            if phoneconfirm.key == self.request.data['confirm_key']:
+                phoneconfirm.is_confirmed = True
+                phoneconfirm.save()
+                self.response = Response({"status": _("Successfully_confirmed")},
+                                         status=status.HTTP_200_OK)
+            else:
+                self.response = Response({"error": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
+
+    def send_sms(self):
+        # 최초 -> sms전달
+        try:
+            self.user = User.objects.get(phone=self.phone)
+        except ObjectDoesNotExist:
+            self.user = User.objects.create(phone=self.phone)
+        try:
+            phoneconfirm = PhoneConfirm.objects.get(user=self.user)
+
+            # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
+            # 아닐 경우, 기존 key 다시 전달
+            if phoneconfirm.is_confirmed:
+                self.response = Response({"status": _("Already confirmed")}, status=status.HTTP_200_OK)
+            elif PhoneConfirmSerializer().timeout(phoneconfirm):
+                self.response = Response({"status": _("Session_finished")}, status=status.HTTP_200_OK)
+            else:
+                self.response = Response({"status": _("Already Exist"),
+                                          "key": phoneconfirm.key}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            self.token = create_token(self.token_model, self.user)
+            smsmanager = SMSManager(user=self.user)
+            smsmanager.set_content()
+            smsmanager.create_instance()
+            smsmanager.send_sms(self.user.phone)
+            self.response = Response({
+                "token": self.token.key,
+                "confirm_key": smsmanager.confirm_key
+            }, status=status.HTTP_200_OK)
 
     def confirmsms(self, request):
-        self.user = get_user(request)
+        self.request = request
         # todo: 유저의 휴대전화 정보가 없을 경우 처리
-        self._confirmsms()
+        if self.request.data.get('phone'):
+            self.phone = self.request.data.get('phone')
+            self.send_sms()
+        elif self.request.data.get('confirm_key'):
+            self.user = get_user(request)
+            self._confirmsms()
+        else:
+            self.response = Response({'status':'no request body'},status=status.HTTP_400_BAD_REQUEST)
         return self.response
 
     def get_profile(self):

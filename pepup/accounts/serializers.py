@@ -14,7 +14,7 @@ from django.utils import timezone
 class SignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("email","password", "nickname","phone")
+        fields = ("email","password", "nickname")
 
     def create(self, validated_data):
         user = User.objects.create(
@@ -25,6 +25,16 @@ class SignupSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+    def update(self, instance,validated_data):
+        if validated_data.get('email'):
+            instance.email = validated_data['email']
+        if validated_data.get('nickname'):
+            instance.nickname = validated_data['nickname']
+        if validated_data.get('password'):
+            instance.set_password(validated_data['password'])
+        instance.save()
+        return instance
 
 
 class PhoneConfirmSerializer(serializers.ModelSerializer):

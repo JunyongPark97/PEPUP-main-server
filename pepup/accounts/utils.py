@@ -82,7 +82,6 @@ def get_user(request):
     user = token.user
     return user
 
-
 def get_follower(user):
     followers = Follow.objects.filter(_to=user)
     return followers
