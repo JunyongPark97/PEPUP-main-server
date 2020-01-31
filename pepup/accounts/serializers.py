@@ -158,4 +158,4 @@ class SearchAddrSerializer(serializers.ModelSerializer):
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['user','zipNo', 'roadAddr', 'jibunAddr','detailAddr']
+        fields = ['id','user','zipNo', 'roadAddr', 'jibunAddr','detailAddr']

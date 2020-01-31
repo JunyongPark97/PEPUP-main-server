@@ -82,6 +82,7 @@ class Address(models.Model):
     jibunAddr = models.TextField(verbose_name='지번주소')
     detailAddr = models.TextField(verbose_name='상세주소')
 
+
 class DeliveryPolicy(models.Model):
     seller = models.OneToOneField(User, on_delete=models.CASCADE, related_name='delivery_policy')
     general = models.IntegerField(verbose_name='일반')

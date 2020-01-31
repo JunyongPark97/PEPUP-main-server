@@ -68,6 +68,20 @@ class AccountRouter(DefaultRouter):
             detail=False,
             initkwargs={}
         ),
+        Route(
+            url='{prefix}/get_address/',
+            mapping={'get': 'get_address'},
+            name='{basename}-get-address',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/delete_address/',
+            mapping={'post': 'delete_address'},
+            name='{basename}-delete-address',
+            detail=False,
+            initkwargs={}
+        ),
 
     ]
 

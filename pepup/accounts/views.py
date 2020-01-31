@@ -239,31 +239,49 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'profile': self.serializer.data})
         return self.response
 
-    def search_address(self, request):
+    def search_address(self, request, currentpage=1):
         jusomaster = JusoMaster()
-        data = jusomaster.search_juso(
+        if request.data.get('currentpage'):
+            currentpage = request.data.get('currentpage')
+        commondata, data = jusomaster.search_juso(
             keyword=request.data.get('keyword'),
-            currentpage=request.data.get('currentpage'),
-            countperpage=request.data.get('countperpage')
+            currentpage=currentpage,
+            countperpage=10
         )
+        common = CommonSerializer(data=commondata)
         serializer = SearchAddrSerializer(data=data, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data)
+        if serializer.is_valid() and common.is_valid():
+            return Response({'common': common.data,'juso': serializer.data})
         return Response(serializer.errors)
 
-    def get_address(self):
-        pass
+    def get_address(self,request):
+        self.user = get_user(request)
+        queryset = Address.objects.filter(user=self.user)
+        serializer = AddressSerializer(queryset,many=True)
+        return Response(serializer.data)
+
+    def delete_address(self, request):
+        self.user = get_user(request)
+        try:
+            address = Address.objects.get(pk=request.data.get('pk'))
+        except ObjectDoesNotExist:
+            return Response({'status': _('pk does not match')},status=status.HTTP_404_NOT_FOUND)
+        serializer = AddressSerializer(address)
+        if address.user == self.user:
+            address.delete()
+            return Response({'status': _('Successfully delete')}, status=status.HTTP_200_OK)
+        else:
+            return Response({'status': _("user does not match")}, status=status.HTTP_401_UNAUTHORIZED)
 
     def set_address(self,request):
         self.user = get_user(request)
-        serializer = AddressSerializer(data=request.data,partial=True)
+        serializer = AddressSerializer(data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save(
                 user=self.user
             )
-            return Response(serializer.data)
+            return Response({'status':_("Successfully set address")},status.HTTP_201_CREATED)
         return Response(serializer.errors)
-
 
 
 class LogoutView(APIView):

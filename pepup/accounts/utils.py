@@ -136,4 +136,4 @@ class JusoMaster:
             'countPerPage': countperpage,
             'resultType': 'json'
         })
-        return res.json()['results']['juso']
+        return (res.json()['results']['common'], res.json()['results']['juso'])
