@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from pepup.loader import load_credential
+
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = os.path.dirname(PROJECT_DIR)
 
@@ -32,6 +34,8 @@ INSTALLED_APPS = [
 SECONDS_APPS = [
     'accounts',
     'api',
+    'notice',
+    'notification'
 ]
 
 # package
@@ -57,6 +61,11 @@ THIRD_APPS = [
     
     # 'toolbar'
     'debug_toolbar',
+
+    # 'ckeditor'
+    'ckeditor',
+    'ckeditor_uploader',
+
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS
@@ -137,6 +146,39 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
+# park 임시 사용
+# ########## STATIC & MEDIA SETTINGS
+#
+# AWS_REGION = 'ap-northeast-2'
+# AWS_STORAGE_BUCKET_NAME = 'pepup-server-storages-dev'
+# AWS_QUERYSTRING_AUTH = False
+# AWS_S3_HOST = 's3.%s.amazonaws.com' % AWS_REGION
+# AWS_ACCESS_KEY_ID = load_credential('_AWS_ACCESS_KEY_ID', "")
+# AWS_SECRET_ACCESS_KEY = load_credential('_AWS_SECRET_ACCESS_KEY', "")
+# AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
+# AWS_S3_SECURE_URLS = True  # https
+#
+# # Static Setting
+# STATICFILES_LOCATION = 'static'
+# STATIC_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, STATICFILES_LOCATION)
+# STATICFILES_STORAGE = 'pepup.storages.StaticStorage'
+#
+# # Media Setting
+# MEDIAFIELS_LOCATION = 'media'
+# MEDIA_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, MEDIAFIELS_LOCATION)
+# MEDIAFILES_LOCATION = 'media'
+# DEFAULT_FILE_STORAGE = 'pepup.storages.MediaStorage'
+#
+# # See: https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#staticfiles-finders
+# STATICFILES_FINDERS = [
+#     'django.contrib.staticfiles.finders.FileSystemFinder',
+#     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+# ]
+#
+# # See: http://django-compressor.readthedocs.io/en/latest/
+# ########## END STATIC % MEDIA CONFIGURATION
+
+
 SITE_ID = 1
 
 # drf 토큰인증처
@@ -148,6 +190,29 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10
 }
+
+
+########## CKEDITOR CONFIGURATION
+CKEDITOR_UPLOAD_PATH = "uploads/"
+
+CKEDITOR_IMAGE_BACKEND = "pillow"
+CKEDITOR_JQUERY_URL = 'https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js'
+
+
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'Custom',
+        'toolbar_Custom': [
+            ['Bold', 'Italic', 'Underline', 'Source', '-', 'Image'],
+            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+            ['Link', 'Unlink'],
+            ['RemoveFormat', 'Source']
+        ]
+    }
+}
+########## END CKEDITOR CONFIGURATION
+
+
 
 APPEND_SLASH = False
 

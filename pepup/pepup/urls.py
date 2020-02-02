@@ -24,10 +24,15 @@ from rest_framework.permissions import AllowAny
 
 
 urlpatterns = [
+
+    # api
     path('admin/', admin.site.urls),
     path('api/', include('rest_framework.urls')),
     path('api/', include('api.urls')),
     path('', include('accounts.urls')),
+
+    # ckeditor
+    path('ckeditor/', include('ckeditor_uploader.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
