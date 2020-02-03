@@ -100,62 +100,6 @@ class AccountViewSet(viewsets.GenericViewSet):
             return Response({'status':_('Successfully_signup')},status=status.HTTP_200_OK)
         return Response(self.serializer.errors)
 
-    def _find_email(self):
-        try:
-            self.user = User.objects.get(phone=self.phone)
-            if SmsConfirm.objects.filter(user=self.user, for_email=True):
-                self.response = Response({'status': 'already sent'}, status=status.HTTP_208_ALREADY_REPORTED)
-            else:
-                self.smsmanager = SMSManager(user=self.user)
-                self.smsmanager.set_content()
-                self.smsmanager.create_smsconfirm(for_email=True)
-                self.smsmanager.send_sms()
-                self.response = Response({'status': _("Successfully sent: {}".format(self.smsmanager.confirm_key))})
-
-        except ObjectDoesNotExist:
-            self.response = Response({'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    # todo: 정리가 필요합니다...
-    def find_email(self, request):
-        self.request = request
-        if request.data.get('confirm_key') and request.data.get('phone'):
-            confirm_key = request.data.get('confirm_key')
-            try:
-                user = User.objects.get(phone=request.data.get('phone'))
-                try:
-                    smsconfirm = SmsConfirm.objects.get(user=user,for_email=True)
-                    print(smsconfirm.key)
-                    if smsconfirm.key == confirm_key:
-                        smsconfirm.delete()
-                        self.response = Response({'email': user.email}, status=status.HTTP_200_OK)
-                    else:
-                        self.response = Response({'status': 'key does not match'})
-                except ObjectDoesNotExist:
-                    self.response = Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
-            except ObjectDoesNotExist:
-                self.response = Response({'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
-        elif request.data.get('phone'):
-            self.phone = request.data.get('phone')
-            self._find_email()
-        else:
-            self.response = Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
-        return self.response
-
-    def reset_password(self, request):
-        self.user = User.objects.get()
-        if request.data.get('password'):
-            self.user.set_password(request.data.get('password'))
-            self.user.save()
-            return Response({"status": _("Successfully_reset: {}".format(request.data.get('password')))})
-        password = generate_random_key()
-        self.user.set_password(password)
-        self.user.save()
-        smsmanager = SMSManager(user=self.user)
-        smsmanager.set_content()
-        smsmanager.send_sms(to=self.user.phone)
-        return Response({"status": _("Successfully_reset: {}").format(smsmanager.confirm_key)},
-                                 status=status.HTTP_200_OK)
-
     def _confirmsms(self):
         phoneconfirm = PhoneConfirm.objects.get(user=self.user)
         serializer = PhoneConfirmSerializer(phoneconfirm)
@@ -292,6 +236,63 @@ class AccountViewSet(viewsets.GenericViewSet):
             )
             return Response({'status':_("Successfully set address")},status.HTTP_201_CREATED)
         return Response(serializer.errors)
+
+    def _find_email(self):
+        try:
+            self.user = User.objects.get(phone=self.phone)
+            if SmsConfirm.objects.filter(user=self.user, for_email=True):
+                self.response = Response({'status': 'already sent'}, status=status.HTTP_208_ALREADY_REPORTED)
+            else:
+                self.smsmanager = SMSManager(user=self.user)
+                self.smsmanager.set_content()
+                self.smsmanager.create_smsconfirm(for_email=True)
+                self.smsmanager.send_sms()
+                self.response = Response({'status': _("Successfully sent: {}".format(self.smsmanager.confirm_key))})
+
+        except ObjectDoesNotExist:
+            self.response = Response({'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # todo: 정리가 필요합니다...
+    def find_email(self, request):
+        self.request = request
+        if request.data.get('confirm_key') and request.data.get('phone'):
+            confirm_key = request.data.get('confirm_key')
+            try:
+                user = User.objects.get(phone=request.data.get('phone'))
+                try:
+                    smsconfirm = SmsConfirm.objects.get(user=user,for_email=True)
+                    print(smsconfirm.key)
+                    if smsconfirm.key == confirm_key:
+                        smsconfirm.delete()
+                        self.response = Response({'email': user.email}, status=status.HTTP_200_OK)
+                    else:
+                        self.response = Response({'status': 'key does not match'})
+                except ObjectDoesNotExist:
+                    self.response = Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
+            except ObjectDoesNotExist:
+                self.response = Response({'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
+        elif request.data.get('phone'):
+            self.phone = request.data.get('phone')
+            self._find_email()
+        else:
+            self.response = Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
+        return self.response
+
+    def reset_password(self, request):
+        self.user = User.objects.get()
+        if request.data.get('password'):
+            self.user.set_password(request.data.get('password'))
+            self.user.save()
+            return Response({"status": _("Successfully_reset: {}".format(request.data.get('password')))})
+        password = generate_random_key()
+        self.user.set_password(password)
+        self.user.save()
+        smsmanager = SMSManager(user=self.user)
+        smsmanager.set_content()
+        smsmanager.send_sms(to=self.user.phone)
+        return Response({"status": _("Successfully_reset: {}").format(smsmanager.confirm_key)},
+                                 status=status.HTTP_200_OK)
+
 
 
 class LogoutView(APIView):

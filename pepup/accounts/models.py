@@ -34,7 +34,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     username = None
-    email = models.EmailField(verbose_name='email address', unique=True)
+    email = models.EmailField(verbose_name='email address', unique=True, null=True)
     nickname = models.CharField(max_length=30, unique=True, null=True, verbose_name='nickname')
     phone = models.CharField(max_length=19, unique=True, null=True, help_text='숫자만 입력해주세요')
     USERNAME_FIELD = 'email'
