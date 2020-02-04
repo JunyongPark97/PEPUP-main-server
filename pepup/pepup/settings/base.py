@@ -35,7 +35,6 @@ SECONDS_APPS = [
     'accounts',
     'api',
     'notice',
-    'notification'
 ]
 
 # package
