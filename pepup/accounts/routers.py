@@ -5,6 +5,13 @@ from .views import AccountViewSet
 class AccountRouter(DefaultRouter):
     DefaultRouter.routes += [
         Route(
+            url='{prefix}/check_userinfo/',
+            mapping={'get': 'check_userinfo'},
+            name='{basename}-check_userinfo',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
             url='{prefix}/login/',
             mapping={'post': 'login'},
             name='{basename}-login',

@@ -14,6 +14,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
+from rest_framework import exceptions
 from django.http import JsonResponse
 
 from accounts.serializers import (
@@ -50,6 +51,16 @@ class AccountViewSet(viewsets.GenericViewSet):
     def get_response_serializer(self):
         response_serializer = TokenSerializer
         return response_serializer
+
+    def check_userinfo(self, request):
+        if request.user.is_anonymous:
+            return Response({'status': -1}, status=status.HTTP_200_OK)
+        if request.user.email:
+            if request.user.nickname:
+                return Response({'status': 1}, status=status.HTTP_200_OK)
+            else:
+                return Response({'status': -3}, status=status.HTTP_200_OK)
+        return Response({'status': -2}, status=status.HTTP_200_OK)
 
     def _login(self):
         self.user = self.serializer.validated_data['user']
@@ -93,7 +104,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         return response
 
     def signup(self, request):
-        self.user = get_user(request)
+        self.user = request.user
         self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
         if self.serializer.is_valid():
             self.serializer.save()
@@ -104,48 +115,55 @@ class AccountViewSet(viewsets.GenericViewSet):
         phoneconfirm = PhoneConfirm.objects.get(user=self.user)
         serializer = PhoneConfirmSerializer(phoneconfirm)
         if phoneconfirm.is_confirmed:
-            self.response = Response({"status": _("Already confirmed")},
+            self.response = Response({'code': -2, "status": _("Already confirmed")},
                                 status=status.HTTP_200_OK)
         elif serializer.timeout(phoneconfirm):
-            self.response = Response({"status": _("Session_finished")},
+            self.response = Response({'code': -3, "status": _("Session_finished")},
                                 status=status.HTTP_200_OK)
         else:
             if phoneconfirm.key == self.request.data['confirm_key']:
                 phoneconfirm.is_confirmed = True
                 phoneconfirm.save()
-                self.response = Response({"status": _("Successfully_confirmed")},
+                self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
                                          status=status.HTTP_200_OK)
             else:
-                self.response = Response({"error": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
+                self.response = Response({'code': -1, "status": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
 
     def send_sms(self):
         # 최초 -> sms전달
         try:
             self.user = User.objects.get(phone=self.phone)
-        except ObjectDoesNotExist:
+        except User.DoesNotExist:
             self.user = User.objects.create(phone=self.phone)
+        self.token = create_token(self.token_model, self.user)
         try:
             phoneconfirm = PhoneConfirm.objects.get(user=self.user)
 
             # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
             # 아닐 경우, 기존 key 다시 전달
             if phoneconfirm.is_confirmed:
-                self.response = Response({"status": _("Already confirmed")}, status=status.HTTP_200_OK)
+                self.response = Response({"code": -2, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
             elif PhoneConfirmSerializer().timeout(phoneconfirm):
-                self.response = Response({"status": _("Session_finished")}, status=status.HTTP_200_OK)
+                self.send_sms()
+                self.response = Response({"code": -3, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key}, status=status.HTTP_200_OK)
             else:
-                self.response = Response({"status": _("Already Exist"),
-                                          "key": phoneconfirm.key}, status=status.HTTP_200_OK)
-        except ObjectDoesNotExist:
-            self.token = create_token(self.token_model, self.user)
+                self.response = Response({
+                    "code": -1,
+                    "status": _("이미 전송하였습니다"),
+                    "token": self.token.key}, status=status.HTTP_200_OK
+                )
+        except PhoneConfirm.DoesNotExist:
             smsmanager = SMSManager(user=self.user)
             smsmanager.set_content()
             smsmanager.create_instance()
-            smsmanager.send_sms(self.user.phone)
-            self.response = Response({
-                "token": self.token.key,
-                "confirm_key": smsmanager.confirm_key
-            }, status=status.HTTP_200_OK)
+            if not smsmanager.send_sms(to=self.user.phone):
+                self.response = Response({"code": -20, 'status': _('메세지 전송오류입니다.')}, status.HTTP_400_BAD_REQUEST)
+            else:
+                self.response = Response({
+                    "code": 1,
+                    "status": _('메세지를 전송하였습니다'),
+                    "token": self.token.key
+                }, status=status.HTTP_200_OK)
 
     def confirmsms(self, request):
         self.request = request
@@ -154,10 +172,10 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.phone = self.request.data.get('phone')
             self.send_sms()
         elif self.request.data.get('confirm_key'):
-            self.user = get_user(request)
+            self.user = self.request.user
             self._confirmsms()
         else:
-            self.response = Response({'status':'no request body'},status=status.HTTP_400_BAD_REQUEST)
+            self.response = Response({'code': -10, 'status': _('요청 바디가 없습니다.')}, status=status.HTTP_400_BAD_REQUEST)
         return self.response
 
     def get_profile(self):
@@ -292,7 +310,6 @@ class AccountViewSet(viewsets.GenericViewSet):
         smsmanager.send_sms(to=self.user.phone)
         return Response({"status": _("Successfully_reset: {}").format(smsmanager.confirm_key)},
                                  status=status.HTTP_200_OK)
-
 
 
 class LogoutView(APIView):
