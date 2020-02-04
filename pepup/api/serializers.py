@@ -32,6 +32,8 @@ class ProductSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
     thumbnails = serializers.SerializerMethodField()
+    category = serializers.StringRelatedField()
+    tag = serializers.StringRelatedField(many=True)
 
     class Meta:
         model = Product
