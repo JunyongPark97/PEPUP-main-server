@@ -43,7 +43,7 @@ class ProductSerializer(serializers.ModelSerializer):
         thumbnails = obj.prodthumbnail_set.all()
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails,many=True).data
-        return [{"thumbnail":"http://1567e764.ngrok.io/media/%EC%86%90%EC%A4%80%ED%98%81%20/profile/%E1%84%8C%E1%85%A9%E1%84%8C%E1%85%A6_%E1%84%92%E1%85%A9%E1%84%85%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5_%E1%84%80%E1%85%B3%E1%84%85%E1%85%B5%E1%84%80%E1%85%A9_%E1%84%86%E1%85%AE%E1%86%AF%E1%84%80%E1%85%A9%E1%84%80%E1%85%B5%E1%84%83%E1%85%B3%E1%86%AF.jpg"}]
+        return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
 
 
 class MainSerializer(serializers.ModelSerializer):
@@ -58,7 +58,7 @@ class MainSerializer(serializers.ModelSerializer):
         thumbnails = obj.prodthumbnail_set.all()
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails,many=True).data
-        return [{"thumbnail":"http://1567e764.ngrok.io/media/%EC%86%90%EC%A4%80%ED%98%81%20/profile/%E1%84%8C%E1%85%A9%E1%84%8C%E1%85%A6_%E1%84%92%E1%85%A9%E1%84%85%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5_%E1%84%80%E1%85%B3%E1%84%85%E1%85%B5%E1%84%80%E1%85%A9_%E1%84%86%E1%85%AE%E1%86%AF%E1%84%80%E1%85%A9%E1%84%80%E1%85%B5%E1%84%83%E1%85%B3%E1%86%AF.jpg"}]
+        return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
 
 
 class TradeSerializer(serializers.ModelSerializer):

@@ -34,9 +34,6 @@ from .serializers import (
     DealSerializer,
 )
 
-# pagination
-from api.pagination import CustomPagination
-
 from accounts.serializers import UserSerializer
 
 # bootpay
@@ -56,7 +53,7 @@ def pay_test(request):
 class ProductViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    pagination_class = CustomPagination
+    pagination_class = pagination.PageNumberPagination
 
     def list(self, request):
         self.serializer_class = MainSerializer
