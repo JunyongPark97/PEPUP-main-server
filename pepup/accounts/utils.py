@@ -35,8 +35,10 @@ class SMSManager():
         }
 
     def create_instance(self):
-        phone_confirm = PhoneConfirm(user=self.user, key=self.confirm_key)
-        phone_confirm.save()
+        phone_confirm = PhoneConfirm.objects.create(
+            user=self.user,
+            key=self.confirm_key
+        )
         return phone_confirm
 
     def create_smsconfirm(self,for_email=False,for_password=False):
@@ -59,12 +61,14 @@ class SMSManager():
         self.body['content'] = "[몽데이크] [인증번호:{}] 인증번호를 입력해주세요".format(self.confirm_key)
 
     def send_sms(self, to=None):
-        if self.user:
-            self.body['to'].append(self.user.phone)
-        elif not self.body['to']:
-            self.body['to'].append(to)
-        res = requests.post(self.url, headers=self.headers, data=json.dumps(self.body, ensure_ascii=False).encode('utf-8'))
-        return res
+        if to:
+            self.body['to'] = [to]
+        elif self.user:
+            self.body['to'] = [self.user.phone]
+        self.res = requests.post(self.url, headers=self.headers, data=json.dumps(self.body, ensure_ascii=False).encode('utf-8'))
+        if self.res.json()['status'] != '200':
+            return False
+        return True
 
 
 def generate_random_key(length=10):
@@ -78,9 +82,13 @@ def create_token(token_model, user):
 
 def get_user(request):
     token_key = request.headers['Authorization'].split(' ')[1]
-    token = Token.objects.get(key=token_key)
-    user = token.user
-    return user
+    try:
+        token = Token.objects.get(key=token_key)
+        user = token.user
+        return user
+    except:
+        self.response = Response({'status':0})
+        return None
 
 def get_follower(user):
     followers = Follow.objects.filter(_to=user)

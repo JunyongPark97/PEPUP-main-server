@@ -43,9 +43,13 @@ class User(AbstractUser):
     objects = UserManager()
 
     def __str__(self):
+        if self.is_anonymous:
+            return 'anonymous'
         if self.nickname:
             return self.nickname
-        return self.email
+        if self.email:
+            return self.email
+        return self.phone
 
 
 class PhoneConfirm(models.Model):
