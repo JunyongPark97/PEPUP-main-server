@@ -127,7 +127,7 @@ class AccountViewSet(viewsets.GenericViewSet):
                 self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
                                          status=status.HTTP_200_OK)
             else:
-                self.response = Response({'code': -1, "status": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
+                self.response = Response({'code': -1, "status": _("key does not match")}, status=status.HTTP_200_OK)
 
     def send_sms(self):
         # 최초 -> sms전달
