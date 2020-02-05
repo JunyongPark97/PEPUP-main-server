@@ -32,7 +32,7 @@ class ProductSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
     thumbnails = serializers.SerializerMethodField()
-    category = serializers.StringRelatedField()
+    category = serializers.SerializerMethodField()
     tag = serializers.StringRelatedField(many=True)
 
     class Meta:
@@ -44,6 +44,15 @@ class ProductSerializer(serializers.ModelSerializer):
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails,many=True).data
         return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
+
+    def get_category(self, obj):
+        k = obj.category
+        rtn = []
+        while k is not None:
+            rtn.append(k.name)
+            k = k.parent
+        return reversed(rtn)
+
 
 
 class MainSerializer(serializers.ModelSerializer):
