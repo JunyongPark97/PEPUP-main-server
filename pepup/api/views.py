@@ -24,26 +24,17 @@ from .serializers import (
     ProductSerializer,
     TradeSerializer,
     BrandSerializer,
-    FilterSerializer,
     MainSerializer,
     LikeSerializer,
     FollowSerializer,
     PayFormSerializer,
-    ItemSerializer,
-    UserinfoSerializer,
-    DealSerializer,
 )
-
-from accounts.serializers import UserSerializer
 
 # bootpay
 from .Bootpay import BootpayApi
 
 # utils
 from accounts.utils import get_user, get_follower
-from datetime import datetime
-from api.utils import set_filter, add_key_value
-from ast import literal_eval
 
 
 def pay_test(request):
@@ -161,27 +152,51 @@ class ProductViewSet(viewsets.GenericViewSet):
 
 
 class FollowViewSet(viewsets.GenericViewSet):
-    serializer_class = FollowSerializer
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
     pagination_class = pagination.PageNumberPagination
 
+    def get_recommended_seller(self):
+        self.recommended_seller = User.objects.all()
+        if self.recommended.count() > 5:
+            self.recommended_seller = self.recommended_seller[:5]
+        # todo: recommend query
+
+        ########
+
+    def get_products_by_follow(self):
+        follows = Follow.objects.filter(_from=self.user)
+        self.follows_by_seller = follows.filter(tag=None)
+        self.follows_by_tag = follows.filter(_to=None)
+        self.products_by_seller = Product.objects.filter(seller___to__in=self.follows_by_seller)
+        self.products_by_tag = Product.objects.filter(tag__follow__in=self.follows_by_tag)
+
     def list(self, request):
-        user = get_user(request)
-        _toes = Follow.objects.filter(_from=user, tag=None)
-        tags = Follow.objects.filter(_from=user, _to=None)
-        products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
-        products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
-
-        follow_list_qs = Product.objects.filter(q(seller_id__in=_toes.values_list('_to',flat=True))|q(tags__in=tags.values_list('tag',flat=True)))
-        follow_ordered_list_qs = follow_list_qs.distint().order_by('created_at')
-
-        self.serializer_class = ProductSerializer  # Follow serializer
-
-        page = self.paginate_queryset(follow_ordered_list_qs)
+        self.user = request.user
+        self.get_products_by_follow()
+        page = self.paginate_queryset(self.products_by_seller)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.serializer_class(follow_ordered_list_qs,many=True)
+        serializer = MainSerializer(self.products_by_seller, many=True)
         return Response(serializer.data)
+
+        # _toes = Follow.objects.filter(_from=user, tag=None)
+        # tags = Follow.objects.filter(_from=user, _to=None)
+        # products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
+        # products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
+        #
+        # follow_list_qs = Product.objects.filter(q(seller_id__in=_toes.values_list('_to',flat=True))|q(tags__in=tags.values_list('tag',flat=True)))
+        # follow_ordered_list_qs = follow_list_qs.distint().order_by('created_at')
+        #
+        # self.serializer_class = ProductSerializer  # Follow serializer
+        #
+        # page = self.paginate_queryset(follow_ordered_list_qs)
+        # if page is not None:
+        #     serializer = self.get_serializer(page, many=True)
+        #     return self.get_paginated_response(serializer.data)
+        # serializer = self.serializer_class(follow_ordered_list_qs,many=True)
+        # return Response(serializer.data)
 
     def _check_follow(self,_from, _to, tag):
         follows = Follow.objects.get(q(_from=_from)&(q(_to=_to)|q(tag=tag)))
