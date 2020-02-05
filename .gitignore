@@ -4,6 +4,9 @@ migrations/
 server_info.json
 static
 settings/__init__.py
+savecategory.py
+savesampledata.py
+*.xlsx
 
 # Created by https://www.gitignore.io/api/macos,python,django
 # Edit at https://www.gitignore.io/?templates=macos,python,django

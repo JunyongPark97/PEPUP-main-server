@@ -65,6 +65,9 @@ THIRD_APPS = [
     'ckeditor',
     'ckeditor_uploader',
 
+    # 'fcm django'
+    'fcm_django'
+
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS
@@ -190,6 +193,10 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10
 }
 
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
 ########## CKEDITOR CONFIGURATION
 CKEDITOR_UPLOAD_PATH = "uploads/"
@@ -212,6 +219,20 @@ CKEDITOR_CONFIGS = {
 ########## END CKEDITOR CONFIGURATION
 
 
+########## FCM DJANGO CONFIGURATION
+FCM_DJANGO_SETTINGS = {
+        "APP_VERBOSE_NAME": "pepup",
+         # default: _('FCM Django')
+        "FCM_SERVER_KEY": load_credential("FCM_SERVER_KEY", ""),
+         # true if you want to have only one active device per registered user at a time
+         # default: False
+        "ONE_DEVICE_PER_USER": False,
+         # devices to which notifications cannot be sent,
+         # are deleted upon receiving error response from FCM
+         # default: False
+        "DELETE_INACTIVE_DEVICES": True,
+}
+########## FCM DJANGO CONFIGURATION
 
 APPEND_SLASH = False
 
