@@ -157,7 +157,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             smsmanager.set_content()
             smsmanager.create_instance()
             if not smsmanager.send_sms(to=self.user.phone):
-                self.response = Response({"code": -20, 'status': _('메세지 전송오류입니다.')}, status.HTTP_400_BAD_REQUEST)
+                self.response = Response({"code": -20, 'status': _('메세지 전송오류입니다.')}, status.HTTP_200_OK)
             else:
                 self.response = Response({
                     "code": 1,
