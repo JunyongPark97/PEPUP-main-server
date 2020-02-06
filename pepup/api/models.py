@@ -188,7 +188,7 @@ class Deal(models.Model): #돈 관련 (스토어 별로)
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
     payment = models.ForeignKey(Payment,on_delete=models.CASCADE)
     total = models.IntegerField(verbose_name='결제금액')
-    remain = models.IntegerField(verbose_name='잔여금')
+    remain = models.IntegerField(verbose_name='잔여금') # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
     delivery_charge = models.IntegerField(verbose_name='배송비')
     delivery = models.OneToOneField(Delivery,on_delete=models.CASCADE)
 
@@ -196,11 +196,11 @@ class Deal(models.Model): #돈 관련 (스토어 별로)
 class Trade(models.Model): #카트, 상품 하나하나당 아이디 1개씩
     STATUS = [
         (1, '결제전'),
-        (2, '결제완료'),
+        (2, '결제완료'), # = 배송전 , noti 날려주기.
         (3, '배송중'),
         (4, '배송완료'),
-        (5, '거래완료'),
-        (6, '정산완료'),
+        (5, '거래완료'), # 셀러한테 noti 날려주기. // 리뷰남겼을떄, 운송장 번호 5일 후 (자동구매확정)
+        (6, '정산완료'), # admin 필요
         (-1, '환불신청'),
         (-2, '환불승인'),
         (-3, '환불완료'),
