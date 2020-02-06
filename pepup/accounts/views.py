@@ -318,15 +318,15 @@ class AccountViewSet(viewsets.GenericViewSet):
 
         # confirmed
         if smsconfirm.is_confirmed:
-            self.response = Response({'code': -2, "status": _("Already confirmed")},
+            self.response = Response({'code': -3, "status": _("Already confirmed")},
                                      status=status.HTTP_200_OK)
         #
         elif serializer.timeout(smsconfirm):
-            self.response = Response({'code': -3, "status": _("Session_finished")},
+            self.response = Response({'code': -2, "status": _("Session_finished")},
                                      status=status.HTTP_200_OK)
 
         else:
-            self.response = Response({'code': -4, 'status': _("Is Already send"), 'key': smsconfirm.key},
+            self.response = Response({'code': -1, 'status': _("Is Already send"), 'key': smsconfirm.key},
                                      status=status.HTTP_200_OK)
 
         return self.response
@@ -342,14 +342,14 @@ class AccountViewSet(viewsets.GenericViewSet):
         # check exist user
         user = User.objects.filter(email=email)
         if not user:
-            return Response({'code': -100, 'status': _('존재하지 않는 ID 입니다.')}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'code': 3, 'status': _('존재하지 않는 ID 입니다.')}, status=status.HTTP_204_NO_CONTENT)
 
         user = user.last()
         user_phone = user.phone
 
         # check valid phone number
         if not phone == user_phone:
-            return Response({'code': -101, 'status': _('맞지않는 전화번호 입니다.')}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'code': 4, 'status': _('맞지않는 전화번호 입니다.')}, status=status.HTTP_400_BAD_REQUEST)
 
         # send sms for reset password
         self._reset_password_sms(user)
@@ -367,13 +367,13 @@ class AccountViewSet(viewsets.GenericViewSet):
         # check exist user
         user = User.objects.filter(email=email)
         if not user:
-            return Response({'code': -100, 'status': _('존재하지 않는 ID 입니다.')}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'code': 3, 'status': _('존재하지 않는 ID 입니다.')}, status=status.HTTP_204_NO_CONTENT)
         user = user.last()
         user_phone = user.phone
 
         # check valid phone number
         if not phone == user_phone:
-            return Response({'code': -101, 'status': _('맞지않는 전화번호 입니다.')}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'code': 4, 'status': _('맞지않는 전화번호 입니다.')}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             smsconfirm = SmsConfirm.objects.get(user=user, for_password=True)
