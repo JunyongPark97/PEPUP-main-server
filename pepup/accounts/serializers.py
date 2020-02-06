@@ -27,11 +27,8 @@ class SignupSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        self.custom_errors = {'code': 1, 'status': ''}
         if validated_data.get('email'):
             instance.email = validated_data['email']
-        else:
-            self.custom_errors
         if validated_data.get('nickname'):
             instance.nickname = validated_data['nickname']
         if validated_data.get('password'):
