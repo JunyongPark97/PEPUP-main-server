@@ -42,7 +42,7 @@ from django.http import HttpResponse, JsonResponse
 
 class AccountViewSet(viewsets.GenericViewSet):
     permission_classes = (AllowAny,)
-    serializer_class = SignupSerializer
+    serializer_class = LoginSerializer
     token_model = Token
 
     def process_login(self):
@@ -68,15 +68,11 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.process_login()
 
     def get_response(self):
-        serializer_class = self.get_response_serializer()
         data = {
             'user': self.user,
             'key': self.token
         }
-        serializer = serializer_class(instance=data,
-                                      context={'request': self.request})
-
-        response = Response(serializer.data, status=status.HTTP_200_OK)
+        response = Response({'code':1, 'status': '로그인에 성공하였습니다.','key':self.token.key}, status=status.HTTP_200_OK)
         return response
 
     def login(self, request, *args, **kwargs):
@@ -84,8 +80,9 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.serializer = self.get_serializer(data=self.request.data,
                                               context={'request': request})
         self.serializer.is_valid(raise_exception=True)
-
         self._login()
+        if not self.user.nickname:
+            return Response({'code':2, 'status':'닉네임이 없습니다.', 'key':self.token.key})
         return self.get_response()
 
     def logout(self, request):
