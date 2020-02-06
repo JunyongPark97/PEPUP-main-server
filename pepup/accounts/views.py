@@ -309,7 +309,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.smsmanager.set_content()
             self.smsmanager.create_smsconfirm(for_password=True)
             self.smsmanager.send_sms()
-            self.response = Response({'status': _("Successfully sent: {}".format(self.smsmanager.confirm_key))})
+            self.response = Response({'code': 1, 'status': _("Successfully sent: {}".format(self.smsmanager.confirm_key))})
 
             return self.response
 
