@@ -10,7 +10,8 @@ from rest_framework import pagination
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
-
+from django.db.models import Prefetch
+from django.db.models import IntegerField, Value, Case, When
 from .loader import load_credential
 
 # model
@@ -29,6 +30,9 @@ from .serializers import (
     FollowSerializer,
     PayFormSerializer,
 )
+from accounts.serializers import UserSerializer
+
+from api.pagination import FollowPagination
 
 # bootpay
 from .Bootpay import BootpayApi
@@ -97,7 +101,11 @@ class ProductViewSet(viewsets.GenericViewSet):
         user = get_user(request)
         product = get_object_or_404(Product, pk=pk)
         sold_products = Product.objects.filter(seller=product.seller,sold=True)
-        like, tf = Like.objects.get_or_create(user=user, product=product,is_liked=False)
+        try:
+            like = Like.objects.get(user=user, product=product,is_liked=False)
+            is_liked = like.is_liked
+        except Like.DoesNotExist:
+            is_liked = False
         follower = get_follower(product.seller)
         is_bagged = Trade.objects.filter(product=product, buyer=user)
         if is_bagged.exists():
@@ -109,7 +117,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         return Response({
             'product': serializer.data,
             'isbagged': status,
-            'liked': like.is_liked,
+            'liked': is_liked,
             'general': product.seller.delivery_policy.general,
             'mountain': product.seller.delivery_policy.mountain,
             # 'seller': {
@@ -153,32 +161,63 @@ class ProductViewSet(viewsets.GenericViewSet):
 
 class FollowViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    pagination_class = pagination.PageNumberPagination
+    serializer_class = FollowSerializer
+    pagination_class = FollowPagination
 
     def get_recommended_seller(self):
         self.recommended_seller = User.objects.all()
-        if self.recommended.count() > 5:
+        if self.recommended_seller.count() > 5:
             self.recommended_seller = self.recommended_seller[:5]
         # todo: recommend query
-
         ########
+        # todo: serializer 최적화
+        self.recommended = UserSerializer(self.recommended_seller, many=True)
 
     def get_products_by_follow(self):
         follows = Follow.objects.filter(_from=self.user)
         self.follows_by_seller = follows.filter(tag=None)
-        self.follows_by_tag = follows.filter(_to=None)
-        self.products_by_seller = Product.objects.filter(seller___to__in=self.follows_by_seller)
-        self.products_by_tag = Product.objects.filter(tag__follow__in=self.follows_by_tag)
+        self.follows_by_tag = follows\
+            .prefetch_related('tag')\
+            .filter(_to=None)
+        self.products_by_seller = Product.objects\
+            .select_related('seller', 'category', 'brand')\
+            .select_related('seller__profile')\
+            .prefetch_related('seller___to')\
+            .prefetch_related('tag')\
+            .filter(seller___to__in=self.follows_by_seller)\
+            .annotate(by=Value(1, output_field=IntegerField()))
+        self.products_by_tag = Product.objects\
+            .select_related('brand', 'category', 'category__parent') \
+            .select_related('seller__profile') \
+            .prefetch_related('seller___to') \
+            .prefetch_related('tag')\
+            .filter(tag__follow__in=self.follows_by_tag) \
+            .annotate(by=Value(2, output_field=IntegerField()))
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Return the serializer instance that should be used for validating and
+        deserializing input, and for serializing output.
+        """
+        serializer_class = self.get_serializer_class()
+        kwargs['context'].update(self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
 
     def list(self, request):
         self.user = request.user
+        if self.user.is_anonymous:
+            return Response({'code': -1, 'status': "로그인해주세요"})
         self.get_products_by_follow()
-        page = self.paginate_queryset(self.products_by_seller)
+        self.get_recommended_seller()
+        print(list(self.products_by_seller.values_list('id', flat=True)))
+        page = self.paginate_queryset(self.products_by_seller | self.products_by_tag)
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = MainSerializer(self.products_by_seller, many=True)
+            serializer = self.get_serializer(page, many=True, context={"by_seller": list(self.products_by_seller.values_list('id', flat=True))})
+            return self.get_paginated_response({
+                "products": serializer.data,
+                "recommended": self.recommended.data
+            })
+        serializer = MainSerializer(self.products_by_tag|self.products_by_seller, many=True)
         return Response(serializer.data)
 
         # _toes = Follow.objects.filter(_from=user, tag=None)
