@@ -33,6 +33,13 @@ class AccountRouter(DefaultRouter):
             initkwargs={}
         ),
         Route(
+            url='{prefix}/check_nickname/',
+            mapping={'post': 'check_nickname'},
+            name='{basename}-check-nickname',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
             url='{prefix}/signup/',
             mapping={'post': 'signup'},
             name='{basename}-signup',
