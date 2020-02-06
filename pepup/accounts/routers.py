@@ -26,6 +26,13 @@ class AccountRouter(DefaultRouter):
             initkwargs={}
         ),
         Route(
+            url='{prefix}/check_email/',
+            mapping={'post': 'check_email'},
+            name='{basename}-check-email',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
             url='{prefix}/signup/',
             mapping={'post': 'signup'},
             name='{basename}-signup',
