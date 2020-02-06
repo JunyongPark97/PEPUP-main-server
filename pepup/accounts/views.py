@@ -68,15 +68,11 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.process_login()
 
     def get_response(self):
-        serializer_class = self.get_response_serializer()
         data = {
             'user': self.user,
             'key': self.token
         }
-        serializer = serializer_class(instance=data,
-                                      context={'request': self.request})
-
-        response = Response(serializer.data, status=status.HTTP_200_OK)
+        response = Response({'code':1, 'status': '로그인에 성공하였습니다.','key':self.token.key}, status=status.HTTP_200_OK)
         return response
 
     def login(self, request, *args, **kwargs):
@@ -84,8 +80,9 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.serializer = self.get_serializer(data=self.request.data,
                                               context={'request': request})
         self.serializer.is_valid(raise_exception=True)
-
         self._login()
+        if not self.user.nickname:
+            return Response({'code':2, 'status':'닉네임이 없습니다.', 'key':self.token.key})
         return self.get_response()
 
     def logout(self, request):
@@ -103,22 +100,47 @@ class AccountViewSet(viewsets.GenericViewSet):
                             status=status.HTTP_200_OK)
         return response
 
+    def check_email(self, request):
+        try:
+            User.objects.get(email=request.data.get('email'))
+            return Response({'code': -1, 'status': '중복된 이메일입니다. '})
+        except User.DoesNotExist:
+            return Response({'code': 1, 'status': '사용가능한 이메일입니다.'})
+
+    def check_nickname(self, request):
+        try:
+            User.objects.get(nickname=request.data.get('nickname'))
+            return Response({'code': -1, 'status': '중복된 닉네임입니다. '})
+        except User.DoesNotExist:
+            return Response({'code': 1, 'status': '사용가능한 닉네임입니다.'})
+
+
     def signup(self, request):
         self.user = request.user
+        if self.user.is_anonymous:
+            return Response({'code': -3, 'status': '로그인을 해주세요'})
+        if request.data.get('email'):
+            if self.user.email:
+                return Response({'code': -2, 'status': 'user의 email이 존재합니다.'})
+            try:
+                User.objects.get(email=request.data.get('email'))
+                return Response({'code': -1, 'status': '중복된 이메일입니다.'})
+            except ObjectDoesNotExist:
+                pass
         self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
         if self.serializer.is_valid():
             self.serializer.save()
-            return Response({'status':_('Successfully_signup')},status=status.HTTP_200_OK)
+            return Response({'code': 1, 'status': _('Successfully_signup')}, status=status.HTTP_200_OK)
         return Response(self.serializer.errors)
 
     def _confirmsms(self):
         phoneconfirm = PhoneConfirm.objects.get(user=self.user)
         serializer = PhoneConfirmSerializer(phoneconfirm)
         if phoneconfirm.is_confirmed:
-            self.response = Response({'code': -2, "status": _("Already confirmed")},
+            self.response = Response({'code': -3, "status": _("Already confirmed")},
                                 status=status.HTTP_200_OK)
         elif serializer.timeout(phoneconfirm):
-            self.response = Response({'code': -3, "status": _("Session_finished")},
+            self.response = Response({'code': -2, "status": _("Session_finished")},
                                 status=status.HTTP_200_OK)
         else:
             if phoneconfirm.key == self.request.data['confirm_key']:
@@ -127,7 +149,7 @@ class AccountViewSet(viewsets.GenericViewSet):
                 self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
                                          status=status.HTTP_200_OK)
             else:
-                self.response = Response({'code': -1, "status": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
+                self.response = Response({'code': -1, "status": _("key does not match")}, status=status.HTTP_200_OK)
 
     def send_sms(self):
         # 최초 -> sms전달
@@ -142,10 +164,13 @@ class AccountViewSet(viewsets.GenericViewSet):
             # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
             # 아닐 경우, 기존 key 다시 전달
             if phoneconfirm.is_confirmed:
-                self.response = Response({"code": -2, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
+                if self.user.email:
+                    self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
+                else:
+                    self.response = Response({"code": 3, "status": _('회원가입을 진행해주세요.'),"token":self.token.key},status=status.HTTP_200_OK)
             elif PhoneConfirmSerializer().timeout(phoneconfirm):
                 self.send_sms()
-                self.response = Response({"code": -3, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key}, status=status.HTTP_200_OK)
+                self.response = Response({"code": -2, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key}, status=status.HTTP_200_OK)
             else:
                 self.response = Response({
                     "code": -1,
@@ -157,7 +182,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             smsmanager.set_content()
             smsmanager.create_instance()
             if not smsmanager.send_sms(to=self.user.phone):
-                self.response = Response({"code": -20, 'status': _('메세지 전송오류입니다.')}, status.HTTP_400_BAD_REQUEST)
+                self.response = Response({"code": -20, 'status': _('메세지 전송오류입니다.')}, status.HTTP_200_OK)
             else:
                 self.response = Response({
                     "code": 1,

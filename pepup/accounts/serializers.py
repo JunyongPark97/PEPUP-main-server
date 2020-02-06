@@ -14,7 +14,7 @@ from django.utils import timezone
 class SignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("email","password", "nickname")
+        fields = ("email", "password", "nickname")
 
     def create(self, validated_data):
         user = User.objects.create(
@@ -26,7 +26,7 @@ class SignupSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-    def update(self, instance,validated_data):
+    def update(self, instance, validated_data):
         if validated_data.get('email'):
             instance.email = validated_data['email']
         if validated_data.get('nickname'):
@@ -130,19 +130,17 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'nickname', 'email', 'profile', 'reviews', 'sold', 'followers']
 
     def get_sold(self, obj):
-        sold_products = Product.objects.filter(seller=obj, sold=True)
-        return sold_products.count()
+        return obj.product_set.filter(sold=True).count()
 
     def get_reviews(self, obj):
         return 0
 
     def get_followers(self, obj):
-        followers = Follow.objects.filter(_to=obj)
-        return followers.count()
+        return obj._to.count()
 
     def get_profile(self, obj):
         try:
-            profile = Profile.objects.get(user=obj)
+            profile = obj.profile
             return ThumbnailSerializer(profile).data
         except:
              return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
