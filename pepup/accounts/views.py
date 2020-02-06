@@ -42,7 +42,7 @@ from django.http import HttpResponse, JsonResponse
 
 class AccountViewSet(viewsets.GenericViewSet):
     permission_classes = (AllowAny,)
-    serializer_class = LoginSerializer
+    serializer_class = SignupSerializer
     token_model = Token
 
     def process_login(self):
@@ -105,10 +105,20 @@ class AccountViewSet(viewsets.GenericViewSet):
 
     def signup(self, request):
         self.user = request.user
+        print(request.data)
+        if self.user.is_anonymous:
+            return Response({'code': -3, 'status': '로그인을 해주세요'})
+        if self.user.email and request.data.get('email'):
+            return Response({'code': -2, 'status': 'user의 email이 존재합니다.'})
+        try:
+            User.objects.get(email=request.data.get('email'))
+            return Response({'code': -1, 'status': '중복된 이메일입니다.'})
+        except ObjectDoesNotExist:
+            pass
         self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
         if self.serializer.is_valid():
             self.serializer.save()
-            return Response({'status':_('Successfully_signup')},status=status.HTTP_200_OK)
+            return Response({'code': 1, 'status': _('Successfully_signup')}, status=status.HTTP_200_OK)
         return Response(self.serializer.errors)
 
     def _confirmsms(self):
