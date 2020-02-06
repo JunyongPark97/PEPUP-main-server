@@ -115,10 +115,10 @@ class AccountViewSet(viewsets.GenericViewSet):
         phoneconfirm = PhoneConfirm.objects.get(user=self.user)
         serializer = PhoneConfirmSerializer(phoneconfirm)
         if phoneconfirm.is_confirmed:
-            self.response = Response({'code': -2, "status": _("Already confirmed")},
+            self.response = Response({'code': -3, "status": _("Already confirmed")},
                                 status=status.HTTP_200_OK)
         elif serializer.timeout(phoneconfirm):
-            self.response = Response({'code': -3, "status": _("Session_finished")},
+            self.response = Response({'code': -2, "status": _("Session_finished")},
                                 status=status.HTTP_200_OK)
         else:
             if phoneconfirm.key == self.request.data['confirm_key']:
@@ -166,7 +166,7 @@ class AccountViewSet(viewsets.GenericViewSet):
                     "code": 1,
                     "status": _('메세지를 전송하였습니다'),
                     "token": self.token.key
-                }, status=status.HTTP_201_CREATED)
+                }, status=status.HTTP_200_OK)
 
     def confirmsms(self, request):
         self.request = request
