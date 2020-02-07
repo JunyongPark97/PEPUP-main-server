@@ -251,25 +251,31 @@ class FollowViewSet(viewsets.GenericViewSet):
             return Response(FollowSerializer(follow))
         return Response({'status':'no following'})
 
-    def _following(self, _from, _to, tag):
-        if _to:
+    def following(self, request):
+        _from = get_user(request)
+        if request.data['_to']:
+            _to = request.data['_to']
             _to = get_object_or_404(User,pk=_to)
             follow, created = Follow.objects.get_or_create(_from=_from, _to=_to)
-        else:
+        elif request.data['tag']:
+            tag = request.data['tag']
             tag = get_object_or_404(Tag, pk=tag)
             follow, created = Follow.objects.get_or_create(_from=_from, tag=tag)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         if not created:
             if follow.is_follow:
                 follow.is_follow = False
             else:
                 follow.is_follow = True
             follow.save()
-            return FollowSerializer(follow).data
-        return FollowSerializer(follow).data
+            return Response(status=status.HTTP_206_PARTIAL_CONTENT)
+        return Response(status=status.HTTP_201_CREATED)
 
-    def following(self, request):
-        _from = get_user(request)
-        return Response(self._following(_from,_to=request.POST['_to'],tag=request.POST['tag']))
+    # def following(self, request):
+    #     _from = get_user(request)
+    #     print(request.data['_to'])
+    #     self._following(_from, request)
 
 
 class TradeViewSet(viewsets.GenericViewSet):
