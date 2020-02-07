@@ -112,10 +112,10 @@ class AccountViewSet(viewsets.GenericViewSet):
         phoneconfirm = PhoneConfirm.objects.get(user=self.user)
         serializer = PhoneConfirmSerializer(phoneconfirm)
         if phoneconfirm.is_confirmed:
-            self.response = Response({'code': -2, "status": _("Already confirmed")},
+            self.response = Response({'code': -3, "status": _("Already confirmed")},
                                      status=status.HTTP_200_OK)
         elif serializer.timeout(phoneconfirm):
-            self.response = Response({'code': -3, "status": _("Session_finished")},
+            self.response = Response({'code': -2, "status": _("Session_finished")},
                                      status=status.HTTP_200_OK)
         else:
             if phoneconfirm.key == self.request.data['confirm_key']:
@@ -140,11 +140,11 @@ class AccountViewSet(viewsets.GenericViewSet):
             # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
             # 아닐 경우, 기존 key 다시 전달
             if phoneconfirm.is_confirmed:
-                self.response = Response({"code": -2, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
+                self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
             elif PhoneConfirmSerializer().timeout(phoneconfirm):
                 self.send_sms()
                 self.response = Response(
-                    {"code": -3, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key},
+                    {"code": -2, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key},
                     status=status.HTTP_200_OK)
             else:
                 self.response = Response({
