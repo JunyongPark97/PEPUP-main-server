@@ -68,17 +68,12 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.token = create_token(self.token_model, self.user)
         self.process_login()
 
-
     def get_response(self):
-        serializer_class = self.get_response_serializer()
         data = {
             'user': self.user,
             'key': self.token
         }
-        serializer = serializer_class(instance=data,
-                                      context={'request': self.request})
-
-        response = Response(serializer.data, status=status.HTTP_200_OK)
+        response = Response({'code':1, 'status': '로그인에 성공하였습니다.','key':self.token.key}, status=status.HTTP_200_OK)
         return response
 
     def login(self, request, *args, **kwargs):
