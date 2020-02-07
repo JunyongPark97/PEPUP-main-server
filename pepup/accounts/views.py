@@ -102,6 +102,20 @@ class AccountViewSet(viewsets.GenericViewSet):
                             status=status.HTTP_200_OK)
         return response
 
+    def check_email(self, request):
+         try:
+             User.objects.get(email=request.data.get('email'))
+             return Response({'code': -1, 'status': '중복된 이메일입니다. '})
+         except User.DoesNotExist:
+             return Response({'code': 1, 'status': '사용가능한 이메일입니다.'})
+
+    def check_nickname(self, request):
+         try:
+             User.objects.get(nickname=request.data.get('nickname'))
+             return Response({'code': -1, 'status': '중복된 닉네임입니다. '})
+         except User.DoesNotExist:
+             return Response({'code': 1, 'status': '사용가능한 닉네임입니다.'})
+
     def signup(self, request):
         self.user = request.user
         self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
