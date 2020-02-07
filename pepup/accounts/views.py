@@ -83,6 +83,8 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.serializer.is_valid(raise_exception=True)
 
         self._login()
+        if not self.user.nickname:
+            return Response({'code': 2, 'status': '닉네임이 없습니다.', 'key': self.token.key})
         return self.get_response()
 
     def logout(self, request):
