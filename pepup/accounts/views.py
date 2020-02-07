@@ -67,6 +67,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.token = create_token(self.token_model, self.user)
         self.process_login()
 
+
     def get_response(self):
         data = {
             'user': self.user,
