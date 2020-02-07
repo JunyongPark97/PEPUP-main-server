@@ -24,6 +24,7 @@ class SignupSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
+
         return user
 
     def update(self, instance, validated_data):
@@ -34,6 +35,8 @@ class SignupSerializer(serializers.ModelSerializer):
         if validated_data.get('password'):
             instance.set_password(validated_data['password'])
         instance.save()
+        # 유저 생성될 때 profile instance 생성.
+        Profile.objects.get_or_create(user=instance)
         return instance
 
 
@@ -149,7 +152,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['user', 'thumbnail_img', 'background_img','address1','address2','introduce']
+        fields = ['user', 'thumbnail_img', 'introduce']
 
 
 class CommonSerializer(serializers.Serializer):
