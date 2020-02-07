@@ -69,11 +69,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.process_login()
 
     def get_response(self):
-        data = {
-            'user': self.user,
-            'key': self.token
-        }
-        response = Response({'code':1, 'status': '로그인에 성공하였습니다.','key':self.token.key}, status=status.HTTP_200_OK)
+        response = Response({'code':1, 'status': '로그인에 성공하였습니다.','token':self.token.key}, status=status.HTTP_200_OK)
         return response
 
     def login(self, request, *args, **kwargs):
@@ -84,7 +80,7 @@ class AccountViewSet(viewsets.GenericViewSet):
 
         self._login()
         if not self.user.nickname:
-            return Response({'code': 2, 'status': '닉네임이 없습니다.', 'key': self.token.key})
+            return Response({'code': 2, 'status': '닉네임이 없습니다.', 'token': self.token.key}, status=status.HTTP_200_OK)
         return self.get_response()
 
     def logout(self, request):
