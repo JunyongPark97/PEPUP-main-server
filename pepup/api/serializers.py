@@ -84,7 +84,7 @@ class FollowSerializer(serializers.ModelSerializer):
             return 1
         return 2
 
-class MainSerializer(serializers.Serializer):
+class MainSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
     seller = UserSerializer()
 
