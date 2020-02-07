@@ -212,7 +212,7 @@ class FollowViewSet(viewsets.GenericViewSet):
         print(list(self.products_by_seller.values_list('id', flat=True)))
         page = self.paginate_queryset(self.products_by_seller | self.products_by_tag)
         if page is not None:
-            serializer = self.get_serializer(page, many=True, context={"by_seller": list(self.products_by_seller.values_list('id', flat=True))})
+            serializer = self.get_serializer(page, many=True, context={"request": self.request, "by_seller": list(self.products_by_seller.values_list('id', flat=True))})
             return self.get_paginated_response({
                 "products": serializer.data,
                 "recommended": self.recommended.data

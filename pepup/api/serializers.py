@@ -60,6 +60,8 @@ class FollowSerializer(serializers.ModelSerializer):
     category = serializers.SerializerMethodField()
     tag = serializers.StringRelatedField(many=True)
     by = serializers.SerializerMethodField()
+    discount_price = serializers.SerializerMethodField()
+    liked = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -83,6 +85,21 @@ class FollowSerializer(serializers.ModelSerializer):
         if obj.id in self.context.get('by_seller'):
             return 1
         return 2
+
+    def get_discount_price(self, obj):
+        discount_percent = obj.discount_rate
+        discount_rate = 1 - discount_percent * 0.01
+        discount_price = int(obj.price * discount_rate)
+        return discount_price
+
+    # TODO : FIX ME!
+    def get_liked(self, obj):
+        request = self.context['request']
+        user = request.user
+        if obj.like_set.filter(user=user):
+            liked = obj.like_set.filter(user=user).is_liked
+            return liked
+        return None
 
 class MainSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
