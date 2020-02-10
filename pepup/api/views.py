@@ -1,4 +1,5 @@
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import authentication, permissions
@@ -7,7 +8,7 @@ from rest_framework import status, viewsets, generics
 from rest_framework.authtoken.models import Token
 from rest_framework import mixins
 from rest_framework import pagination
-
+from django.db.models import F, Sum, Q, Value as V, Count
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
@@ -585,7 +586,36 @@ class BrandView(APIView):
             return JsonResponse(serializers.data)
 
 
-class SearchView(GenericAPIView):
-    queryset = Product.objects.all()
+class SearchViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated, ]
 
-    pass
+    def search(self, request):
+        keyword = request.data['keyword']
+        product_count = self.search_by_product(keyword)
+        tags = self.search_by_tag(keyword)
+        seller_qs = UserSerializer(self.search_by_seller(keyword), many=True)
+        searched_data = {}
+        searched_data['name_result'] = product_count
+        searched_data['tag_result'] = tags
+        searched_data['seller_result'] = seller_qs.data
+        return Response(searched_data)
+
+    def search_by_product(self, keyword):
+        searched_product = Product.objects.filter(name__icontains=keyword)
+        return searched_product.count()
+
+    # TODO : recommend by user logs(searched, clicked, liked, followed)
+    def search_by_tag(self, keyword):
+        queryset_values = Tag.objects.prefetch_related('product_set')\
+            .filter(tag__icontains=keyword)\
+            .annotate(product_count=Count('product'))\
+            .values('tag', 'id')\
+            .order_by('-product_count')[:5]
+        return queryset_values
+
+    # TODO : ordering by related seller (Seller product's tag)
+    def search_by_seller(self, keyword):
+        queryset = User.objects.prefetch_related('product_set')\
+            .filter(nickname__icontains=keyword)\
+            .order_by('nickname')[:5]
+        return queryset

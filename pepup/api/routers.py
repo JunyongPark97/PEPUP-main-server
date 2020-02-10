@@ -1,8 +1,8 @@
 from rest_framework.routers import Route, DefaultRouter,SimpleRouter, DynamicRoute
 from .views import (
     ProductViewSet, TradeViewSet, FollowViewSet,
-    PaymentViewSet
-)
+    PaymentViewSet,
+    SearchViewSet)
 
 
 
@@ -110,6 +110,18 @@ class FollowRouter(DefaultRouter):
     ]
 
 
+class SearchRouter(DefaultRouter):
+    DefaultRouter.routes += [
+        Route(
+            url='{prefix}/searching/',
+            mapping={'post': 'search'},
+            name='{basename}-search',
+            detail=False,
+            initkwargs={}
+        )
+    ]
+
+
 router = ProductRouter()
 router.register('products', ProductViewSet, basename='products')
 router_trades = TradeRouter()
@@ -118,3 +130,6 @@ router_follow = FollowRouter()
 router_follow.register('follow', FollowViewSet,basename='follow')
 router_payment = PaymentRouter()
 router_payment.register('payment', PaymentViewSet, basename='payment')
+
+router_search = SearchRouter()
+router_search.register('search', SearchViewSet, basename='search')
