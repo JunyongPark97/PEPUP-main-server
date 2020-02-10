@@ -114,11 +114,25 @@ class SearchRouter(DefaultRouter):
     DefaultRouter.routes += [
         Route(
             url='{prefix}/searching/',
-            mapping={'post': 'search'},
+            mapping={'post': 'searching'},
             name='{basename}-search',
             detail=False,
             initkwargs={}
-        )
+        ),
+        Route(
+            url='{prefix}/product/',
+            mapping={'post': 'product_search'},
+            name='{basename}-product-search',
+            detail=False,
+            initkwargs={}
+        ),
+        Route(
+            url='{prefix}/tag/{lookup}/',
+            mapping={'get': 'tag_search'},
+            name='{basename}-tag-search',
+            detail=False,
+            initkwargs={}
+        ),
     ]
 
 
