@@ -51,6 +51,11 @@ class ProductViewSet(viewsets.GenericViewSet):
     pagination_class = pagination.PageNumberPagination
 
     def list(self, request):
+        """
+        :method: GET
+        :param request:
+        :return:
+        """
         self.serializer_class = MainSerializer
         try:
             products = Product.objects.all()
@@ -71,6 +76,11 @@ class ProductViewSet(viewsets.GenericViewSet):
             )
 
     def create(self, request):
+        """
+        :method: POST
+        :param request:
+        :return: code and status
+        """
         seller = get_user(request)
         brand = get_object_or_404(Brand, id=int(request.POST['brand_id']))
         serializer = ProductSerializer(data=request.data,partial=True)
@@ -79,25 +89,34 @@ class ProductViewSet(viewsets.GenericViewSet):
                 seller=seller,
                 brand=brand
             )
-            self.set_prodThumbnail(product,request)
+            self.set_prodThumbnail(product, request)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def search(self, request, pk):
+        """
+        :method: GET
+        :param request:
+        :param pk:
+        :return: code, status, paginated response
+        """
         query = q(name__icontains=pk)
         products = Product.objects.filter(query)
         page = self.paginate_queryset(products)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = MainSerializer(products,many=True)
         serializers = ProductSerializer(products, many=True)
         return Response(serializers.data)
 
-    def filter(self, request):
-        pass
-
     def retrieve(self, request, pk, format=None):
+        """
+        :method: GET
+        :param request:
+        :param pk:
+        :param format:
+        :return:
+        """
         user = get_user(request)
         product = get_object_or_404(Product, pk=pk)
         sold_products = Product.objects.filter(seller=product.seller,sold=True)
@@ -128,11 +147,17 @@ class ProductViewSet(viewsets.GenericViewSet):
             # },
         })
 
+    # todo: response fix -> code and status
     def like(self, request, pk):
-        user = get_user(request)
+        """
+        method: POST
+        :param request:
+        :param pk:
+        :return: code, status
+        """
+        user = request.user
         product = Product.objects.get(pk=pk)
         like, tf = Like.objects.get_or_create(user=user, product=product)
-        print(tf)
         if not tf:
             if like.is_liked:
                 like.is_liked = False
@@ -142,8 +167,14 @@ class ProductViewSet(viewsets.GenericViewSet):
         serializer = LikeSerializer(like)
         return Response(serializer.data)
 
-    def liked(self,request, pk):
-        user = get_user(request)
+    def liked(self, request, pk):
+        """
+        :method: GET
+        :param request:
+        :param pk:
+        :return: cod and status
+        """
+        user = request.user
         product = Product.objects.get(pk=pk)
         like = get_object_or_404(Like, user=user,product=product)
         serializer = LikeSerializer(like)
@@ -195,15 +226,17 @@ class FollowViewSet(viewsets.GenericViewSet):
             .annotate(by=Value(2, output_field=IntegerField()))
 
     def get_serializer(self, *args, **kwargs):
-        """
-        Return the serializer instance that should be used for validating and
-        deserializing input, and for serializing output.
-        """
         serializer_class = self.get_serializer_class()
         kwargs['context'].update(self.get_serializer_context())
         return serializer_class(*args, **kwargs)
 
+    # todo: response -> code, status and paginated response
     def list(self, request):
+        """
+        :method: GET
+        :param request: header token
+        :return: code, status and paginated response
+        """
         self.user = request.user
         if self.user.is_anonymous:
             return Response({'code': -1, 'status': "로그인해주세요"})
@@ -220,23 +253,6 @@ class FollowViewSet(viewsets.GenericViewSet):
         serializer = MainSerializer(self.products_by_tag|self.products_by_seller, many=True)
         return Response(serializer.data)
 
-        # _toes = Follow.objects.filter(_from=user, tag=None)
-        # tags = Follow.objects.filter(_from=user, _to=None)
-        # products_toes = Product.objects.filter(seller_id__in=_toes.values_list('_to',flat=True))
-        # products_by_tags = Product.objects.filter(tag__in=tags.values_list('tag',flat=True))
-        #
-        # follow_list_qs = Product.objects.filter(q(seller_id__in=_toes.values_list('_to',flat=True))|q(tags__in=tags.values_list('tag',flat=True)))
-        # follow_ordered_list_qs = follow_list_qs.distint().order_by('created_at')
-        #
-        # self.serializer_class = ProductSerializer  # Follow serializer
-        #
-        # page = self.paginate_queryset(follow_ordered_list_qs)
-        # if page is not None:
-        #     serializer = self.get_serializer(page, many=True)
-        #     return self.get_paginated_response(serializer.data)
-        # serializer = self.serializer_class(follow_ordered_list_qs,many=True)
-        # return Response(serializer.data)
-
     def _check_follow(self,_from, _to, tag):
         follows = Follow.objects.get(q(_from=_from)&(q(_to=_to)|q(tag=tag)))
         if follows:
@@ -244,15 +260,29 @@ class FollowViewSet(viewsets.GenericViewSet):
         else:
             return False
 
+    # todo: response -> status code
+    # todo: user anonymous fix
     def check_follow(self, request):
-        _from = get_user(request)
+        """
+        :method: POST
+        :param request:
+        :return: code, status
+        """
+        _from = request.user
         follow = self._check_follow(_from,request.POST['_to'],request.POST['tag'])
         if follow:
             return Response(FollowSerializer(follow))
         return Response({'status':'no following'})
 
+    # todo: response -> status, code
+    # todo: user anonymous fix
     def following(self, request):
-        _from = get_user(request)
+        """
+        :method: POST
+        :param request:
+        :return: code, status
+        """
+        _from = request.user
         if request.data['_to']:
             _to = request.data['_to']
             _to = get_object_or_404(User,pk=_to)
@@ -278,12 +308,19 @@ class FollowViewSet(viewsets.GenericViewSet):
     #     self._following(_from, request)
 
 
+# Cart
 class TradeViewSet(viewsets.GenericViewSet):
     queryset = Trade.objects.all()
     serializer_class = TradeSerializer
 
     def bagging(self, request, pk):
-        buyer = get_user(request)
+        """
+        method: GET
+        :param request: check header ->
+        :param pk:
+        :return:
+        """
+        buyer = request.user
         product = get_object_or_404(Product,pk=pk)
         Trade.objects.get_or_create(
             product=product,
@@ -304,13 +341,25 @@ class TradeViewSet(viewsets.GenericViewSet):
             ret_ls.append(store[key])
         return ret_ls
 
+    # todo: code, status and serializer data
     def cart(self, request):
-        self.buyer = get_user(request)
+        """
+        method: GET
+        :param request:
+        :return: code, status, and serializer data(trades)
+        """
+        self.buyer = request.user
         self.trades = Trade.objects.filter(buyer=self.buyer)
         serializer = TradeSerializer(self.trades, many=True)
         return Response(self.groupbyseller(serializer.data))
 
+    # todo: code, status and serializer data
     def cancel(self, request):
+        """
+        method: POST
+        :param request: trades list(by pk)
+        :return: code and status
+        """
         ls_cancel = request.data['trades']
         trades = Trade.objects.filter(pk__in=ls_cancel)
         if trades:
@@ -370,6 +419,11 @@ class PaymentViewSet(viewsets.GenericViewSet):
         return True
 
     def get_payform(self, request):
+        """
+        method: POST
+        :param request:
+        :return: code, status and result
+        """
         self.request = request
         if not self._get_payform():
             return self.response    # set self.payform
@@ -385,7 +439,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         else:
             self.address = get_object_or_404(Profile, user=self.user).address1
 
-    def create_delivery(self,seller):
+    def create_delivery(self, seller):
         self.delivery = Delivery.objects.create(
             sender=seller,
             receiver=self.user,
@@ -413,6 +467,11 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 self.deal.trade_set.add(trade)
 
     def confirm(self, request):
+        """
+        method: POST
+        :param request:
+        :return: code and status
+        """
         self.products = Product.objects.filter(pk__in=request.data.getlist('products'))
         if not self.is_valid_products():
             self.create_payment()
@@ -420,6 +479,11 @@ class PaymentViewSet(viewsets.GenericViewSet):
         return Response({"code": -1}, status=status.HTTP_200_OK)
 
     def done(self, request):
+        """
+        method: POST
+        :param request:
+        :return: status, code
+        """
         # request = {receipt_id, address, deal:[{seller, trades, total, delivery_charge}]}
         self.request = request
         self.user = get_user(self.request)
@@ -438,8 +502,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
     def canceled(self, request):
         pass
 
-    def error(self,request):
+    def error(self, request):
         pass
+
 
 class PayInfo(APIView):
     # todo : 최적화 필요 토큰을 저장하고 25분마다 생성하고 그 안에서는 있는 토큰 사용할 수 있게

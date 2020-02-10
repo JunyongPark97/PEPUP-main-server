@@ -53,6 +53,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         response_serializer = TokenSerializer
         return response_serializer
 
+    # todo: phoneconfirm이 안되어있는 경우 -> -4
     def check_userinfo(self, request):
         if request.user.is_anonymous:
             return Response({'status': -1}, status=status.HTTP_200_OK)
@@ -69,10 +70,17 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.process_login()
 
     def get_response(self):
-        response = Response({'code':1, 'status': '로그인에 성공하였습니다.','token':self.token.key}, status=status.HTTP_200_OK)
+        response = Response({'code': 1, 'status': '로그인에 성공하였습니다.','token':self.token.key}, status=status.HTTP_200_OK)
         return response
 
     def login(self, request, *args, **kwargs):
+        """
+        method: POST
+        :param request:
+        :param args:
+        :param kwargs: email, password
+        :return: code, status, token
+        """
         self.request = request
         self.serializer = self.get_serializer(data=self.request.data,
                                               context={'request': request})
@@ -84,6 +92,12 @@ class AccountViewSet(viewsets.GenericViewSet):
         return self.get_response()
 
     def logout(self, request):
+        """
+        method: post
+        :param request:
+        :return: code, status
+        """
+        # todo: fix response key from detail to code and status
         self.serializer_class = TokenSerializer
         try:
             request.user.auth_token.delete()
@@ -94,63 +108,45 @@ class AccountViewSet(viewsets.GenericViewSet):
                 token.delete()
         if getattr(settings, 'REST_SESSION_LOGIN', True):
             django_logout(request)
+
         response = Response({"detail": _("Successfully logged out.")},
                             status=status.HTTP_200_OK)
         return response
 
     def check_email(self, request):
-         try:
-             User.objects.get(email=request.data.get('email'))
-             return Response({'code': -1, 'status': '중복된 이메일입니다. '})
-         except User.DoesNotExist:
-             return Response({'code': 1, 'status': '사용가능한 이메일입니다.'})
+        """
+        method: POST
+        :param request: email
+        :return: code, status
+        """
+        try:
+            User.objects.get(email=request.data.get('email'))
+            return Response({'code': -1, 'status': '중복된 이메일입니다. '})
+        except User.DoesNotExist:
+            return Response({'code': 1, 'status': '사용가능한 이메일입니다.'})
 
     def check_nickname(self, request):
-         try:
-             User.objects.get(nickname=request.data.get('nickname'))
-             return Response({'code': -1, 'status': '중복된 닉네임입니다. '})
-         except User.DoesNotExist:
-             return Response({'code': 1, 'status': '사용가능한 닉네임입니다.'})
-
-    def signup(self, request):
-        self.user = request.user
-        if self.user.is_anonymous:
-            return Response({'code': -3, 'status': '로그인을 해주세요'})
-        if request.data.get('email'):
-            if self.user.email:
-                return Response({'code': -2, 'status': 'user의 email이 존재합니다.'})
-            try:
-                User.objects.get(email=request.data.get('email'))
-                return Response({'code': -1, 'status': '중복된 이메일입니다.'})
-            except ObjectDoesNotExist:
-                pass
-        self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
-        if self.serializer.is_valid():
-            self.serializer.save()
-            return Response({'code': 1, 'status': _('Successfully_signup')}, status=status.HTTP_200_OK)
-        return Response(self.serializer.errors)
-
-    def _confirmsms(self):
-        phoneconfirm = PhoneConfirm.objects.get(user=self.user)
-        serializer = PhoneConfirmSerializer(phoneconfirm)
-        if phoneconfirm.is_confirmed:
-            self.response = Response({'code': -3, "status": _("Already confirmed")},
-                                     status=status.HTTP_200_OK)
-        elif serializer.timeout(phoneconfirm):
-            self.response = Response({'code': -2, "status": _("Session_finished")},
-                                     status=status.HTTP_200_OK)
-        else:
-            if phoneconfirm.key == self.request.data['confirm_key']:
-                phoneconfirm.is_confirmed = True
-                phoneconfirm.save()
-                self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
-                                         status=status.HTTP_200_OK)
-            else:
-                self.response = Response({'code': -1, "status": _("key does not match")},
-                                         status=status.HTTP_400_BAD_REQUEST)
+        """
+        method: POST
+        :param request: nicknme
+        :return: code, status
+        """
+        try:
+            User.objects.get(nickname=request.data.get('nickname'))
+            return Response({'code': -1, 'status': '중복된 닉네임입니다. '})
+        except User.DoesNotExist:
+            return Response({'code': 1, 'status': '사용가능한 닉네임입니다.'})
 
     def send_sms(self):
-        # 최초 -> sms전달
+        """
+        1. check user by phone. if user is not exist, create user
+        2. set token
+        3. get phoneconfirm if not -> no.4(except), exist -> no.5(try)
+        4. create phoneconfirm -> send sms -> set response
+        5. if phoneconfirm is confirmed -> set code to -3,
+            elif timeout(3 minutes) -> recur send_sms, set response
+            else set code to -1
+        """
         try:
             self.user = User.objects.get(phone=self.phone)
         except User.DoesNotExist:
@@ -187,7 +183,44 @@ class AccountViewSet(viewsets.GenericViewSet):
                     "token": self.token.key
                 }, status=status.HTTP_200_OK)
 
+    def _confirmsms(self):
+        """
+        1. get phoneconfirm
+        2. if phoneconfirm is confirm -> set code to -3
+            elif timeout -> just set code to -2
+        3. if phoneconfirm key match -> update is_confirm to true -> set code to 1
+            else -> set code to -1
+        """
+        # todo: phoneconfirm dose not exist error fix
+        phoneconfirm = PhoneConfirm.objects.get(user=self.user)
+        serializer = PhoneConfirmSerializer(phoneconfirm)
+        if phoneconfirm.is_confirmed:
+            self.response = Response({'code': -3, "status": _("Already confirmed")},
+                                     status=status.HTTP_200_OK)
+        elif serializer.timeout(phoneconfirm):
+            self.response = Response({'code': -2, "status": _("Session_finished")},
+                                     status=status.HTTP_200_OK)
+        else:
+            if phoneconfirm.key == self.request.data['confirm_key']:
+                phoneconfirm.is_confirmed = True
+                phoneconfirm.save()
+                self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
+                                         status=status.HTTP_200_OK)
+            else:
+                # todo: fix status 400 to 200
+                self.response = Response({'code': -1, "status": _("key does not match")},
+                                         status=status.HTTP_400_BAD_REQUEST)
+
     def confirmsms(self, request):
+        """
+        method: POST
+        :param request: phone or (header token and body confirm_key)
+        :return:
+        with phone
+        :send_sms -> code and status, and token if successfully sent
+        with confirm_key
+        :_confirmsms -> code and status
+        """
         self.request = request
         # todo: 유저의 휴대전화 정보가 없을 경우 처리
         if self.request.data.get('phone'):
@@ -199,6 +232,33 @@ class AccountViewSet(viewsets.GenericViewSet):
         else:
             self.response = Response({'code': -10, 'status': _('요청 바디가 없습니다.')}, status=status.HTTP_400_BAD_REQUEST)
         return self.response
+
+    def signup(self, request):
+        """
+        method: POST
+        :param request: email, password or nickname
+        :return: code, status
+        1. if user does not login(no header token) -> code -3
+        2. if get email -> check email -> if exist -> code -2
+            else: check email duplicated -> code -1
+        3. is valid -> save -> code 1
+        """
+        self.user = request.user
+        if self.user.is_anonymous:
+            return Response({'code': -3, 'status': '로그인을 해주세요'})
+        if request.data.get('email'):
+            if self.user.email:
+                return Response({'code': -2, 'status': 'user의 email이 존재합니다.'})
+            try:
+                User.objects.get(email=request.data.get('email'))
+                return Response({'code': -1, 'status': '중복된 이메일입니다.'})
+            except ObjectDoesNotExist:
+                pass
+        self.serializer = SignupSerializer(self.user, data=request.data, partial=True)
+        if self.serializer.is_valid():
+            self.serializer.save()
+            return Response({'code': 1, 'status': _('Successfully_signup')}, status=status.HTTP_200_OK)
+        return Response(self.serializer.errors)
 
     def get_profile(self):
         try:
@@ -220,9 +280,10 @@ class AccountViewSet(viewsets.GenericViewSet):
         else:
             self.response = Response(self.serializer.errors)
 
+    # todo: anonymous user fix
     def profile(self, request):
         self.request = request
-        self.user = get_user(request)
+        self.user = self.request.user
         self.get_profile()
         # profile create and update
         if request.method == 'POST':
@@ -248,14 +309,28 @@ class AccountViewSet(viewsets.GenericViewSet):
             return Response({'common': common.data, 'juso': serializer.data})
         return Response(serializer.errors)
 
+    # todo: anonymous user fix
+    # todo: response -> code and status, address
     def get_address(self, request):
-        self.user = get_user(request)
+        """
+        method: GET
+        :param request: header token
+        :return: code, status and address
+        """
+        self.user = request.user
         queryset = Address.objects.filter(user=self.user)
         serializer = AddressSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # todo: anonymous user fix
+    # todo: response -> code and status
     def delete_address(self, request):
-        self.user = get_user(request)
+        """
+        method: POST
+        :param request: header token
+        :return: code and status
+        """
+        self.user = request.user
         try:
             address = Address.objects.get(pk=request.data.get('pk'))
         except ObjectDoesNotExist:
@@ -267,8 +342,15 @@ class AccountViewSet(viewsets.GenericViewSet):
         else:
             return Response({'status': _("user does not match")}, status=status.HTTP_401_UNAUTHORIZED)
 
+    # todo: anonymous user fix
+    # todo: response -> code and status
     def set_address(self, request):
-        self.user = get_user(request)
+        """
+        Method: POST
+        :param request: header token and bodyaddress
+        :return: code and status
+        """
+        self.user = request.user
         serializer = AddressSerializer(data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save(
@@ -278,6 +360,12 @@ class AccountViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors)
 
     def _find_email(self):
+        """
+        called from find_email
+        :return: nothing
+        1. if user exist with request phone, check sms sent
+            -> if not sent, set sendsms
+        """
         try:
             self.user = User.objects.get(phone=self.phone)
             if SmsConfirm.objects.filter(user=self.user, for_email=True):
@@ -293,8 +381,16 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
 
     # todo: 정리가 필요합니다...
+    # todo: response -> code, status
     def find_email(self, request):
-        print('-as-a')
+        """
+        method: POST
+        :param request: phone and confirm_key
+        :return: code, status, and email
+        1. both confirm_key and phone -> check user, smsconfirm and key
+        2. just phone -> call _find_email method
+        3. nothing -> invaild request
+        """
         self.request = request
         if request.data.get('confirm_key') and request.data.get('phone'):
             confirm_key = request.data.get('confirm_key')
@@ -350,6 +446,11 @@ class AccountViewSet(viewsets.GenericViewSet):
         return self.response
 
     def reset_password_sms(self, request):
+        """
+        method: POST
+        :param request: email and phone
+        :return: code and status
+        """
         # check valid request
         if not request.data.get('email') and request.data.get('phone'):
             return Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
@@ -374,6 +475,11 @@ class AccountViewSet(viewsets.GenericViewSet):
         return self.response
 
     def reset_password_sms_confirm(self, request):
+        """
+        method: POST
+        :param request: email, phone, confirm_key
+        :return: code and status
+        """
         # check valid request
         if not request.data.get('confirm_key') and request.data.get('phone') and request.data.get('email'):
             return Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
@@ -406,87 +512,3 @@ class AccountViewSet(viewsets.GenericViewSet):
                 return Response({'status': 'key does not match'})
         except ObjectDoesNotExist:
             return Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
-
-    def reset_password(self, request):
-        user = request.user
-
-        if not request.data.get('password'):
-            return Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
-
-        password = request.data.get('password')
-
-        user.set_password(password)
-        user.save()
-
-        return Response({'status': 'successfully password changed'}, status=status.HTTP_206_PARTIAL_CONTENT)
-
-
-class LogoutView(APIView):
-    permission_classes = (AllowAny,)
-
-    def get(self, request, *args, **kwargs):
-        response = self.logout(request)
-        return self.finalize_response(request, response, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        return self.logout(request)
-
-    def logout(self, request):
-        try:
-            request.user.auth_token.delete()
-        except (AttributeError, ObjectDoesNotExist):
-            key = request.headers['Authorization']
-            if key:
-                token = Token.objects.get(key=key.split(' ')[1])
-                token.delete()
-        if getattr(settings, 'REST_SESSION_LOGIN', True):
-            django_logout(request)
-        response = Response({"detail": _("Successfully logged out.")},
-                            status=status.HTTP_200_OK)
-        return response
-
-
-class SignupView(APIView):
-    def post(self, request):
-        serializers = SignupSerializer(data=request.data)
-        if serializers.is_valid():
-            user = serializers.create(serializers.validated_data)
-            token = create_token(Token, user)
-            return JsonResponse(dict({"token_key": token.key}, **serializers.data))
-        return Response(serializers.errors)
-
-
-class PhoneConfirmView(APIView):
-    def post(self, request, confirm_key=None):
-        token_key = request.headers['Authorization'].split(' ')[1]
-        token = Token.objects.get(key=token_key)
-        user = token.user
-
-        if confirm_key:
-            phoneconfirm = PhoneConfirm.objects.get(user=user)
-            serializer = PhoneConfirmSerializer(phoneconfirm)
-            if phoneconfirm.is_confirmed:
-                response = Response({"status": _("Already confirmed")},
-                                    status=status.HTTP_200_OK)
-            elif serializer.timeout(phoneconfirm):
-                response = Response({"status": _("Session_finished")},
-                                    status=status.HTTP_200_OK)
-            else:
-                if phoneconfirm.key == confirm_key:
-                    phoneconfirm.is_confirmed = True
-                    phoneconfirm.save()
-                    response = JsonResponse(serializer.data)
-                else:
-                    return Response({"error": _("key does not match")}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            try:
-                phoneconfirm = PhoneConfirm.objects.get(user=user)
-                response = Response({"status": _("Already Exist"),
-                                     "key": phoneconfirm.key}, status=status.HTTP_200_OK)
-            except PhoneConfirm.DoesNotExist:
-                smsmanager = SMSManager(user)
-                smsmanager.send_sms(user.phone)
-                response = Response({"status": _("Successfully_send: {}").format(smsmanager.confirm_key)},
-                                    status=status.HTTP_200_OK)
-
-        return response
