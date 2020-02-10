@@ -201,3 +201,36 @@ class DealSerializer(serializers.ModelSerializer):
     def get_trades(self, obj):
         trades = obj.trade_set.all()
         return trades
+
+
+class SearchResultSerializer(serializers.ModelSerializer):
+    thumbnails = serializers.SerializerMethodField()
+    discount_price = serializers.SerializerMethodField()
+    liked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'thumbnails', 'name', 'price',
+                  'on_discount', 'discount_rate', 'discount_price', 'size',
+                  'liked', 'is_refundable']
+
+    def get_thumbnails(self, obj):
+        thumbnails = obj.prodthumbnail_set.all()
+        if thumbnails:
+            return ProdThumbnailSerializer(thumbnails, many=True).data
+        return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
+
+    def get_discount_price(self, obj):
+        origin_price = obj.price
+        discount_rate = obj.discount_rate
+        discount_price = int(origin_price * (1 - discount_rate * 0.01))
+        return discount_price
+
+    def get_liked(self, obj):
+        request = self.context['request']
+        user = request.user
+        try:
+            liked = obj.like_set.get(user=user).is_liked
+            return liked
+        except:
+            return False

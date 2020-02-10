@@ -31,10 +31,11 @@ from .serializers import (
     LikeSerializer,
     FollowSerializer,
     PayFormSerializer,
-)
+    SearchResultSerializer)
 from accounts.serializers import UserSerializer
 
-from api.pagination import FollowPagination, HomePagination
+from api.pagination import FollowPagination, HomePagination, ProductSearchResultPagination, \
+    TagSearchResultPagination
 
 # bootpay
 from .Bootpay import BootpayApi
@@ -97,6 +98,7 @@ class ProductViewSet(viewsets.GenericViewSet):
 
     def search(self, request, pk):
         """
+        [DEPRECATED] -> SearchViewSet
         :method: GET
         :param request:
         :param pk:
@@ -588,9 +590,12 @@ class BrandView(APIView):
 
 class SearchViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, ]
+    serializer_class = SearchResultSerializer
 
-    def search(self, request):
+    def searching(self, request):
         keyword = request.data['keyword']
+        if len(keyword) < 1:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         product_count = self.search_by_product(keyword)
         tags = self.search_by_tag(keyword)
         seller_qs = UserSerializer(self.search_by_seller(keyword), many=True)
@@ -600,11 +605,59 @@ class SearchViewSet(viewsets.GenericViewSet):
         searched_data['seller_result'] = seller_qs.data
         return Response(searched_data)
 
+    def product_search(self, request):
+        """
+        product name 이 포함된 products 상품을 return 합니다.
+        :method: POST
+        :param request: keyword (string) 검색 하는 값
+        :return: paginated data, status
+        """
+        keyword = request.data['keyword']
+        if len(keyword) < 1:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        try:
+            products = Product.objects.filter(name__icontains=keyword).order_by('-created_at')
+        except Product.DoesNotExist:
+            raise Http404
+
+        paginator = ProductSearchResultPagination()
+        page = paginator.paginate_queryset(products, request)
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def tag_search(self, request, pk):
+        """
+        searching api 에서 주어졌던 tag_id 기반으로 상품을 return 합니다.
+        :method: GET
+        :param request:
+        :return: paginated data, tag_followed: bool, status
+        """
+        # get user
+        user = request.user
+
+        # get tag
+        try:
+            tag = Tag.objects.get(pk=pk)
+        except Tag.DoesNotExist:
+            raise Http404
+
+        # get tag followed
+        try:
+            tag_followed = Follow.objects.get(tag=tag, _from=user).is_follow
+        except:
+            tag_followed = False
+
+        paginator = TagSearchResultPagination()
+        products = Product.objects.filter(tag=tag).order_by('-created_at')
+        page = paginator.paginate_queryset(queryset=products, request=request)
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data, tag_followed=tag_followed)
+
     def search_by_product(self, keyword):
         searched_product = Product.objects.filter(name__icontains=keyword)
         return searched_product.count()
 
-    # TODO : recommend by user logs(searched, clicked, liked, followed)
+    # TODO : recommend by user logs(searched, clicked, liked, followed), optimize
     def search_by_tag(self, keyword):
         queryset_values = Tag.objects.prefetch_related('product_set')\
             .filter(tag__icontains=keyword)\
@@ -613,7 +666,7 @@ class SearchViewSet(viewsets.GenericViewSet):
             .order_by('-product_count')[:5]
         return queryset_values
 
-    # TODO : ordering by related seller (Seller product's tag)
+    # TODO : ordering by related seller (Seller product's tag), optimize
     def search_by_seller(self, keyword):
         queryset = User.objects.prefetch_related('product_set')\
             .filter(nickname__icontains=keyword)\
