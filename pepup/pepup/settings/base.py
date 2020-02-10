@@ -64,10 +64,6 @@ THIRD_APPS = [
     # 'ckeditor'
     'ckeditor',
     'ckeditor_uploader',
-
-    # 'fcm django'
-    'fcm_django'
-
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS

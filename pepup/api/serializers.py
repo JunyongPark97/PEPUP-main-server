@@ -41,8 +41,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_thumbnails(self, obj):
         thumbnails = obj.prodthumbnail_set.select_related('product').all()
+        if not thumbnails:
+            return [{"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
         return ProdThumbnailSerializer(thumbnails, many=True).data
-        # return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
 
     def get_category(self, obj):
         k = obj.category
@@ -69,8 +70,10 @@ class FollowSerializer(serializers.ModelSerializer):
 
     def get_thumbnails(self, obj):
         thumbnails = obj.prodthumbnail_set.select_related('product').all()
+        if not thumbnails:
+            return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
         return ProdThumbnailSerializer(thumbnails, many=True).data
-        # return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
+
 
     def get_category(self, obj):
         k = obj.category

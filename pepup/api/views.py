@@ -197,8 +197,8 @@ class FollowViewSet(viewsets.GenericViewSet):
 
     def get_recommended_seller(self):
         self.recommended_seller = User.objects.all()
-        if self.recommended_seller.count() > 5:
-            self.recommended_seller = self.recommended_seller[:5]
+        if self.recommended_seller.count() > 10:
+            self.recommended_seller = self.recommended_seller[:10]
         # todo: recommend query
         ########
         # todo: serializer 최적화
@@ -342,12 +342,15 @@ class TradeViewSet(viewsets.GenericViewSet):
         return ret_ls
 
     # todo: code, status and serializer data
+    # todo: query duplicate fix
     def cart(self, request):
         """
         method: GET
         :param request:
         :return: code, status, and serializer data(trades)
         """
+        if request.user.is_anonymous:
+            return Response({'status': '로그인이 되지 않았습니다.'},status=status.HTTP_401_UNAUTHORIZED)
         self.buyer = request.user
         self.trades = Trade.objects.filter(buyer=self.buyer)
         serializer = TradeSerializer(self.trades, many=True)
