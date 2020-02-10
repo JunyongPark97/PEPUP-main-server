@@ -33,7 +33,7 @@ from .serializers import (
 )
 from accounts.serializers import UserSerializer
 
-from api.pagination import FollowPagination
+from api.pagination import FollowPagination, HomePagination
 
 # bootpay
 from .Bootpay import BootpayApi
@@ -49,7 +49,7 @@ def pay_test(request):
 class ProductViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    pagination_class = pagination.PageNumberPagination
+    pagination_class = HomePagination
 
     def list(self, request):
         """
