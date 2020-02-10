@@ -95,14 +95,15 @@ class FollowSerializer(serializers.ModelSerializer):
         discount_price = int(obj.price * discount_rate)
         return discount_price
 
-    # TODO : FIX ME!
     def get_liked(self, obj):
         request = self.context['request']
         user = request.user
-        if obj.like_set.filter(user=user):
-            liked = obj.like_set.filter(user=user).is_liked
+        try :
+            liked = obj.like_set.get(user=user).is_liked
             return liked
-        return None
+        except:
+            return False
+
 
 class MainSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()

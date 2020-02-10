@@ -1,3 +1,4 @@
+from rest_framework.generics import GenericAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import authentication, permissions
@@ -584,3 +585,7 @@ class BrandView(APIView):
             return JsonResponse(serializers.data)
 
 
+class SearchView(GenericAPIView):
+    queryset = Product.objects.all()
+
+    pass
