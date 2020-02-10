@@ -53,10 +53,16 @@ class AccountViewSet(viewsets.GenericViewSet):
         response_serializer = TokenSerializer
         return response_serializer
 
-    # todo: phoneconfirm이 안되어있는 경우 -> -4
     def check_userinfo(self, request):
+        """
+        :method: GET
+        :param request: header token or not
+        :return: status
+        """
         if request.user.is_anonymous:
             return Response({'status': -1}, status=status.HTTP_200_OK)
+        if not request.user.phone_confirm.is_confirmed:
+            return Response({'status': -4}, status=status.HTTP_200_OK)
         if request.user.email:
             if request.user.nickname:
                 return Response({'status': 1}, status=status.HTTP_200_OK)
@@ -158,7 +164,10 @@ class AccountViewSet(viewsets.GenericViewSet):
             # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
             # 아닐 경우, 기존 key 다시 전달
             if phoneconfirm.is_confirmed:
-                self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
+                if self.user.email:
+                    self.response = Response({"code": 3, "status": _("승인되었으나 이메일과 패스워드가 없습니다")}, status=status.HTTP_200_OK)
+                else:
+                    self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
             elif PhoneConfirmSerializer().timeout(phoneconfirm):
                 self.send_sms()
                 self.response = Response(
@@ -209,7 +218,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             else:
                 # todo: fix status 400 to 200
                 self.response = Response({'code': -1, "status": _("key does not match")},
-                                         status=status.HTTP_400_BAD_REQUEST)
+                                         status=status.HTTP_200_OK)
 
     def confirmsms(self, request):
         """

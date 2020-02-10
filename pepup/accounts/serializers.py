@@ -48,7 +48,7 @@ class PhoneConfirmSerializer(serializers.ModelSerializer):
     # 세션완료, 5분
     def timeout(self, instance):
         if not instance.is_confirmed:
-            if timezone.now().timestamp() - instance.created_at.timestamp() >= 300:
+            if timezone.now().timestamp() - instance.created_at.timestamp() >= 180:
                 instance.delete()
                 return True
         return False
@@ -62,7 +62,7 @@ class SmsConfirmSerializer(serializers.ModelSerializer):
     # 세션완료, 5분
     def timeout(self, instance):
         if not instance.is_confirmed:
-            if timezone.now().timestamp() - instance.created_at.timestamp() >= 300:
+            if timezone.now().timestamp() - instance.created_at.timestamp() >= 180:
                 instance.delete()
                 return True
         return False
