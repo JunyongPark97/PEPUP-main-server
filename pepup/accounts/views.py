@@ -60,15 +60,15 @@ class AccountViewSet(viewsets.GenericViewSet):
         :return: status
         """
         if request.user.is_anonymous:
-            return Response({'status': -1}, status=status.HTTP_200_OK)
+            return Response({'code': -1}, status=status.HTTP_200_OK)
         if not request.user.phone_confirm.is_confirmed:
-            return Response({'status': -4}, status=status.HTTP_200_OK)
+            return Response({'code': -4}, status=status.HTTP_200_OK)
         if request.user.email:
             if request.user.nickname:
-                return Response({'status': 1}, status=status.HTTP_200_OK)
+                return Response({'code': 1}, status=status.HTTP_200_OK)
             else:
-                return Response({'status': -3}, status=status.HTTP_200_OK)
-        return Response({'status': -2}, status=status.HTTP_200_OK)
+                return Response({'code': -3}, status=status.HTTP_200_OK)
+        return Response({'code': -2}, status=status.HTTP_200_OK)
 
     def _login(self):
         self.user = self.serializer.validated_data['user']
@@ -164,8 +164,9 @@ class AccountViewSet(viewsets.GenericViewSet):
             # 5분 세션 지났을 경우, timeout -> delete phoneconfirm
             # 아닐 경우, 기존 key 다시 전달
             if phoneconfirm.is_confirmed:
-                if self.user.email:
-                    self.response = Response({"code": 3, "status": _("승인되었으나 이메일과 패스워드가 없습니다")}, status=status.HTTP_200_OK)
+                if not self.user.email:
+                    phoneconfirm.is_confirmed = False
+                    self.send_sms()
                 else:
                     self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
             elif PhoneConfirmSerializer().timeout(phoneconfirm):
@@ -401,23 +402,24 @@ class AccountViewSet(viewsets.GenericViewSet):
         3. nothing -> invaild request
         """
         self.request = request
-        if request.data.get('confirm_key') and request.data.get('phone'):
-            confirm_key = request.data.get('confirm_key')
+        self.confirm_key = request.data.get('confirm_key')
+        self.phone = request.data.get('phone')
+        if self.confirm_key and self.phone:
             try:
                 user = User.objects.get(phone=request.data.get('phone'))
-                try:
-                    smsconfirm = SmsConfirm.objects.get(user=user, for_email=True)
-                    print(smsconfirm.key)
-                    if smsconfirm.key == confirm_key:
-                        smsconfirm.delete()
-                        self.response = Response({'email': user.email}, status=status.HTTP_200_OK)
-                    else:
-                        self.response = Response({'status': 'key does not match'})
-                except ObjectDoesNotExist:
-                    self.response = Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
             except ObjectDoesNotExist:
-                self.response = Response({'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
-        elif request.data.get('phone'):
+                return Response({'code':-1, 'status': 'user not found'}, status=status.HTTP_404_NOT_FOUND)
+            try:
+                smsconfirm = SmsConfirm.objects.get(user=user, for_email=True)
+                print(smsconfirm.key)
+                if smsconfirm.key == self.confirm_key:
+                    smsconfirm.delete()
+                    self.response = Response({'email': user.email}, status=status.HTTP_200_OK)
+                else:
+                    self.response = Response({'status': 'key does not match'})
+            except ObjectDoesNotExist:
+                self.response = Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
+            elif request.data.get('phone'):
             self.phone = request.data.get('phone')
             self._find_email()
         else:
