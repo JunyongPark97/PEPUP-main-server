@@ -419,7 +419,7 @@ class AccountViewSet(viewsets.GenericViewSet):
                     self.response = Response({'status': 'key does not match'})
             except ObjectDoesNotExist:
                 self.response = Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
-            elif request.data.get('phone'):
+        elif request.data.get('phone'):
             self.phone = request.data.get('phone')
             self._find_email()
         else:
