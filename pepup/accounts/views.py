@@ -169,8 +169,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             # 아닐 경우, 기존 key 다시 전달
             if phoneconfirm.is_confirmed:
                 if not self.user.email:
-                    phoneconfirm.is_confirmed = False
-                    phoneconfirm.save()
+                    phoneconfirm.delete()
                     self.send_sms()
                 else:
                     self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
