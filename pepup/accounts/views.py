@@ -437,35 +437,43 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'code': -10, 'status': 'invaild request'}, status=status.HTTP_200_OK)
         return self.response
 
-    def _reset_password_sms(self, user):
+    def reset_password_sms_send(self):
+        try:
+            smsconfirm = SmsConfirm.objects.get(user=self.user, for_password=True)
+            serializer = SmsConfirmSerializer(smsconfirm)
 
-        # 첫 인증 시
-        if not SmsConfirm.objects.filter(user=user, for_password=True):
-            self.smsmanager = SMSManager(user=user)
+            # check timeout
+            if serializer.timeout(smsconfirm):
+                self.response = Response({'code': -2, "status": _("Session_finished")},
+                                         status=status.HTTP_200_OK)
+            else:
+                self.response = Response({'code': -1, 'status': _("Is Already send")},
+                                         status=status.HTTP_200_OK)
+        except SmsConfirm.DoesNotExist:
+            self.smsmanager = SMSManager(user=self.user)
             self.smsmanager.set_content()
             self.smsmanager.create_smsconfirm(for_password=True)
-            self.smsmanager.send_sms()
-            self.response = Response({'code': 1, 'status': _("Successfully sent: {}".format(self.smsmanager.confirm_key))})
+            if not self.smsmanager.send_sms(to=self.user.phone):
+                self.response = Response({"code": -20, 'status': _('메세지 전송오류입니다.')}, status.HTTP_400_BAD_REQUEST)
+            else:
+                self.smsmanager.send_sms()
+                self.response = Response({'code': 1, 'status': _("Successfully sent")},status=status.HTTP_200_OK)
 
-            return self.response
+    def reset_password_sms_confirm(self):
+        try:
+            smsconfirm = SmsConfirm.objects.get(user=self.user, for_password=True)
+        except SmsConfirm.DoesNotExist:
+            self.response = Response({'code': -3,'status': 'no smsconfirm'}, status=status.HTTP_200_OK)
+            return
 
-        smsconfirm = SmsConfirm.objects.filter(user=user, for_password=True).last()
-        serializer = SmsConfirmSerializer(smsconfirm)
-
-        # confirmed
-        if smsconfirm.is_confirmed:
-            self.response = Response({'code': -3, "status": _("Already confirmed")},
-                                     status=status.HTTP_200_OK)
-        #
-        elif serializer.timeout(smsconfirm):
-            self.response = Response({'code': -2, "status": _("Session_finished")},
-                                     status=status.HTTP_200_OK)
-
+        if smsconfirm.is_confirmed == self.confirm_key:
+            smsconfirm.delete()
+            token = create_token(self.token_model, self.user)
+            self.response = Response({
+                'code': 1, 'status': 'success', 'token': token.key
+            }, status=status.HTTP_200_OK)
         else:
-            self.response = Response({'code': -1, 'status': _("Is Already send"), 'key': smsconfirm.key},
-                                     status=status.HTTP_200_OK)
-
-        return self.response
+            self.response = Response({'code': -1, 'status': 'key does not match'},status=status.HTTP_200_OK)
 
     def reset_password_sms(self, request):
         """
@@ -473,64 +481,41 @@ class AccountViewSet(viewsets.GenericViewSet):
         :param request: email and phone
         :return: code and status
         """
-        # check valid request
-        if not request.data.get('email') and request.data.get('phone'):
-            return Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
+        self.confirm_key = request.data.get('confirm_key')
+        self.phone = request.data.get('phone')
+        self.email = request.data.get('email')
 
-        email = request.data.get('email')
-        phone = request.data.get('phone')
-
-        # check exist user
-        user = User.objects.filter(email=email)
-        if not user:
-            return Response({'code': 3, 'status': _('존재하지 않는 ID 입니다.')}, status=status.HTTP_204_NO_CONTENT)
-
-        user = user.last()
-        user_phone = user.phone
-
-        # check valid phone number
-        if not phone == user_phone:
-            return Response({'code': 4, 'status': _('맞지않는 전화번호 입니다.')}, status=status.HTTP_400_BAD_REQUEST)
-
-        # send sms for reset password
-        self._reset_password_sms(user)
+        if self.phone and self.email:
+            try:
+                self.user = User.objects.get(phone=self.phone, email=self.email)
+            except User.DoesNotExist:
+                return Response({'code': -4, 'status': '해당정보의 유저가 없습니다'}, status =status.HTTP_200_OK)
+            if not self.confirm_key:
+                self.reset_password_sms_send()
+            else:
+                self.reset_password_sms_confirm()
+        else:
+            self.response = Response({'code': -10, 'status': '요청바디가 없습니다.'}, status=status.HTTP_200_OK)
         return self.response
 
-    def reset_password_sms_confirm(self, request):
+    def reset_password(self, request):
         """
-        method: POST
-        :param request: email, phone, confirm_key
-        :return: code and status
+        method:POST
+        :param request:
+        :return:
         """
-        # check valid request
-        if not request.data.get('confirm_key') and request.data.get('phone') and request.data.get('email'):
-            return Response({'status': 'invaild request'}, status=status.HTTP_400_BAD_REQUEST)
-
-        email = request.data.get('email')
-        phone = request.data.get('phone')
-        confirm_key = request.data.get('confirm_key')
-
-        # check exist user
-        user = User.objects.filter(email=email)
-        if not user:
-            return Response({'code': 3, 'status': _('존재하지 않는 ID 입니다.')}, status=status.HTTP_204_NO_CONTENT)
-        user = user.last()
-        user_phone = user.phone
-
-        # check valid phone number
-        if not phone == user_phone:
-            return Response({'code': 4, 'status': _('맞지않는 전화번호 입니다.')}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            smsconfirm = SmsConfirm.objects.get(user=user, for_password=True)
-            print(smsconfirm.key)
-            if smsconfirm.key == confirm_key:
-                smsconfirm.delete()
-                token = create_token(self.token_model, user)
-
-                return Response({'status': 'success',
-                                 'token': token.key}, status=status.HTTP_200_OK)
+        self.request = request
+        self.user = request.user
+        if self.user.is_anonymous:
+            return Response({'code': -3, 'status': '로그인을 해주세요'}, status=status.HTTP_200_OK)
+        if request.data.get('password'):
+            if request.data.get('password').__len__()>=8:
+                serializer = SignupSerializer(self.user, data=self.request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({'code': 1, 'status': '비밀번호가 성공적으로 변경되었습니다'}, status=status.HTTP_200_OK)
+                return Response({'code': -1, 'status': '요청 body의 key가 잘못되었습니다.'}, status=status.HTTP_200_OK)
             else:
-                return Response({'status': 'key does not match'})
-        except ObjectDoesNotExist:
-            return Response({'status': 'no smsconfirm'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'code': -2, 'status': '8자 이상의 비밀번호를 입력해주세요'},status=status.HTTP_200_OK)
+        else:
+            return Response({'code': -4, 'status': '요청바디가 없습니다.'}, status=status.HTTP_200_OK)
