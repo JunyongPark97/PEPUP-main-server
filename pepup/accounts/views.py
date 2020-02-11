@@ -170,6 +170,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             if phoneconfirm.is_confirmed:
                 if not self.user.email:
                     phoneconfirm.is_confirmed = False
+                    phoneconfirm.save()
                     self.send_sms()
                 else:
                     self.response = Response({"code": -3, "status": _("이미 승인되었습니다")}, status=status.HTTP_200_OK)
