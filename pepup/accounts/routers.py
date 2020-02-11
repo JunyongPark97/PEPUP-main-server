@@ -67,13 +67,7 @@ class AccountRouter(DefaultRouter):
             detail=False,
             initkwargs={}
         ),
-        Route(
-            url='{prefix}/reset_password_sms_confirm/',
-            mapping={'post': 'reset_password_sms_confirm'},
-            name='{basename}-reset-password-sms',
-            detail=False,
-            initkwargs={}
-        ),
+
         Route(
             url='{prefix}/reset_password/',
             mapping={'post': 'reset_password'},

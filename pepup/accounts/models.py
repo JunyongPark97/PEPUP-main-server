@@ -75,7 +75,7 @@ def img_directory_path_profile(instance, filename):
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     thumbnail_img = models.ImageField(upload_to=img_directory_path_profile,
-                                      default='default_profile.png')
+                                      default='default_profile.png', null=True)
     # background_img = models.ImageField(upload_to=img_directory_path_profile, null=True, blank=True)
     introduce = models.TextField(verbose_name='소개', null=True, blank=True)
 
