@@ -110,7 +110,6 @@ class CustomSocialLoginSerializer(serializers.Serializer):
         except HTTPError:
             raise serializers.ValidationError(_("Incorrect value"))
 
-
         if not login.is_existing:
             # We have an account already signed up in a different flow
             # with the same email address: raise an exception.

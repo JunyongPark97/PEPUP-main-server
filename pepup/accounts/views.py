@@ -154,10 +154,13 @@ class AccountViewSet(viewsets.GenericViewSet):
             elif timeout(3 minutes) -> recur send_sms, set response
             else set code to -1
         """
-        try:
-            self.user = User.objects.get(phone=self.phone)
-        except User.DoesNotExist:
-            self.user = User.objects.create(phone=self.phone)
+        if self.request.user.is_anonymous:
+            try:
+                self.user = User.objects.get(phone=self.phone)
+            except User.DoesNotExist:
+                self.user = User.objects.create(phone=self.phone)
+        else:
+            self.user = self.request.user
         self.token = create_token(self.token_model, self.user)
         try:
             phoneconfirm = PhoneConfirm.objects.get(user=self.user)
