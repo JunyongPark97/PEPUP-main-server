@@ -9,7 +9,7 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import GenericAPIView
+from rest_framework.decorators import action
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
@@ -27,6 +27,7 @@ from accounts.serializers import (
     SearchAddrSerializer,
     CommonSerializer,
 )
+from accounts.socialserailzers import CustomSocialLoginSerializer
 from .permissions import IsOwnerByToken
 from .utils import create_token, SMSManager, get_user, generate_random_key, JusoMaster
 from accounts.models import PhoneConfirm, User, Profile, SmsConfirm, Address
@@ -519,3 +520,74 @@ class AccountViewSet(viewsets.GenericViewSet):
                 return Response({'code': -2, 'status': '8자 이상의 비밀번호를 입력해주세요'},status=status.HTTP_200_OK)
         else:
             return Response({'code': -4, 'status': '요청바디가 없습니다.'}, status=status.HTTP_200_OK)
+
+
+from allauth.socialaccount.providers.kakao.views import KakaoOAuth2Adapter
+from rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.instagram.views import InstagramOAuth2Adapter
+from rest_framework.viewsets import ViewSetMixin
+
+
+class SocialUserViewSet(ViewSetMixin, SocialLoginView):
+    serializer_class = CustomSocialLoginSerializer
+
+    def _login(self):
+        self.user = self.serializer.validated_data['user']
+        self.token = create_token(self.token_model, self.user)
+        if getattr(settings, 'REST_SESSION_LOGIN', True):
+            self.process_login()
+
+    @action(methods=['post'], detail=False)
+    def login(self, request):
+        self.request = request
+        self.serializer = self.get_serializer(data=self.request.data,
+                                              context={'request': request})
+
+        self.serializer.is_valid(raise_exception=True)
+        self._login()
+        self.create()
+        return self.get_response()
+
+    @action(methods=['get'],detail=False)
+    def callback(self, request):
+        return Response(None, status=status.HTTP_200_OK)
+
+    def create(self):
+        # process signup
+        pass
+
+
+class CustomKakaoOAuth2Adapter(KakaoOAuth2Adapter):
+    def complete_login(self, request, app, token, **kwargs):
+        headers = {'Authorization': 'Bearer {0}'.format(token.token)}
+        resp = requests.get(self.profile_url, headers=headers)
+        extra_data = resp.json()
+        self.extra_data = extra_data
+        return self.get_provider().sociallogin_from_response(request,
+                                                             extra_data)
+
+
+class KakaoUserViewSet(SocialUserViewSet):
+    adapter_class = CustomKakaoOAuth2Adapter
+
+    # https://developers.kakao.com/docs/restapi/user-management#사용자-정보-요청
+    # 유저 데이터 넣기 : nickname, profile
+    def create(self):
+        userdata = self.serializer.extra_data['kakao_account'].get('profile')
+        nickname = userdata.get('nickname')
+        profile_image_url = userdata.get('profile_image_url')
+        thumbnail_image_url = userdata.get('thumbnail_image_url')
+        if nickname:
+            self.user.nickname = nickname
+        profile, _ = Profile.objects.get_or_create(user=self.user)
+        if profile_image_url:
+            self.user.profile.thumbnail_img = profile_image_url
+        elif thumbnail_image_url:
+            self.user.profile.thumbnail_img = thumbnail_image_url
+        profile.save()
+        self.user.save()
+
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter

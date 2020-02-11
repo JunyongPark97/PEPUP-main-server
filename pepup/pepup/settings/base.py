@@ -46,10 +46,11 @@ THIRD_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'rest_auth.registration',
 
     'allauth.socialaccount.providers.instagram',
     'allauth.socialaccount.providers.kakao',
-
+    'allauth.socialaccount.providers.google',
     # 'drf_yasg',
 
     'storages',

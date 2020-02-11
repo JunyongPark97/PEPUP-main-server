@@ -1,11 +1,12 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
-from .routers import router_account
+from .routers import router
 
 app_name = 'accounts'
 
 
 urlpatterns = [
-    # path('phoneconfirm/', views.PhoneConfirmView.as_view()),
-    # path('phoneconfirm/<str:confirm_key>', views.PhoneConfirmView.as_view()),
-] + router_account.urls
+    path('', include(router.urls)),
+    # path('', include(router_account.urls)),
+    # path('kakao/', include(router_social.urls))
+]
