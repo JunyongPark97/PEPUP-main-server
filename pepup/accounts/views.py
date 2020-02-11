@@ -222,8 +222,12 @@ class AccountViewSet(viewsets.GenericViewSet):
             if phoneconfirm.key == self.request.data['confirm_key']:
                 phoneconfirm.is_confirmed = True
                 phoneconfirm.save()
-                self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
-                                         status=status.HTTP_200_OK)
+                if not hasattr(self.user, 'email'):
+                    self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
+                                             status=status.HTTP_200_OK)
+                else:
+                    self.response = Response({'code': 2, "status": "access from social"},
+                                             status=status.HTTP_200_OK)
             else:
                 # todo: fix status 400 to 200
                 self.response = Response({'code': -1, "status": _("key does not match")},
