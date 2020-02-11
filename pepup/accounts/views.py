@@ -77,7 +77,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.process_login()
 
     def get_response(self):
-        response = Response({'code': 1, 'status': '로그인에 성공하였습니다.','token':self.token.key}, status=status.HTTP_200_OK)
+        response = Response({'code': 1, 'status': '로그인에 성공하였습니다.', 'token':self.token.key}, status=status.HTTP_200_OK)
         return response
 
     def login(self, request, *args, **kwargs):
