@@ -62,6 +62,8 @@ class AccountViewSet(viewsets.GenericViewSet):
         """
         if request.user.is_anonymous:
             return Response({'code': -1}, status=status.HTTP_200_OK)
+        if not hasattr(request.user, 'phone_confirm'):
+            return Response({'code': -5}, status=status.HTTP_200_OK)
         if not request.user.phone_confirm.is_confirmed:
             return Response({'code': -4}, status=status.HTTP_200_OK)
         if request.user.email:
