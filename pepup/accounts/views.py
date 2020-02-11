@@ -163,6 +163,8 @@ class AccountViewSet(viewsets.GenericViewSet):
                 self.user = User.objects.create(phone=self.phone)
         else:
             self.user = self.request.user
+            self.user.phone = self.phone
+            self.user.save()
         self.token = create_token(self.token_model, self.user)
         try:
             phoneconfirm = PhoneConfirm.objects.get(user=self.user)
