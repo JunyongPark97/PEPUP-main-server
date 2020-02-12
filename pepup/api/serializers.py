@@ -4,8 +4,8 @@ from django.http import Http404
 from django.conf import settings
 from .models import (Product, Brand, Payment,
                      Trade, Category, ProdThumbnail,
-                     Like, Follow, Deal)
-from accounts.models import User
+                     Like, Follow, Deal, Tag, SecondCategory)
+from accounts.models import User, DeliveryPolicy
 
 from accounts.serializers import UserSerializer
 
@@ -28,12 +28,49 @@ class ProdThumbnailSerializer(serializers.ModelSerializer):
         fields = ['thumbnail',]
 
 
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['tag', 'id']
+
+
+class DeliveryPolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryPolicy
+        fields = ['general', 'mountain', 'amount', 'volume']
+
+
+class SecondCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SecondCategory
+        fields = ['name', 'id']
+
+
+class RelatedProductSerializer(serializers.ModelSerializer):
+    thumbnails = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'thumbnails', 'size', 'price', 'name']
+
+    def get_thumbnails(self, obj):
+        thumbnails = obj.prodthumbnail_set.select_related('product').all()
+        if not thumbnails:
+            return [{"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
+        return ProdThumbnailSerializer(thumbnails, many=True).data
+
+    def get_size(self, obj):
+        return "{}".format(obj.size.size_name)
+
+
 class ProductSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
     thumbnails = serializers.SerializerMethodField()
-    category = serializers.SerializerMethodField()
-    tag = serializers.StringRelatedField(many=True)
+    size = serializers.SerializerMethodField()
+    second_category = SecondCategorySerializer(allow_null=True)
+    tag = TagSerializer(many=True)
 
     class Meta:
         model = Product
@@ -45,13 +82,12 @@ class ProductSerializer(serializers.ModelSerializer):
             return [{"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
         return ProdThumbnailSerializer(thumbnails, many=True).data
 
-    def get_category(self, obj):
-        k = obj.category
-        rtn = []
-        while k is not None:
-            rtn.insert(0, k.name)
-            k = k.parent
-        return rtn
+    def get_size(self, obj):
+        if obj.size.size_max:
+            return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
+        if obj.size.category.name == 'SHOES':
+            return "{}(cm)".format(obj.size.size)
+        return "{}({})".format(obj.size.size_name, obj.size.size)
 
 
 class FollowSerializer(serializers.ModelSerializer):

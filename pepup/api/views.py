@@ -1,3 +1,4 @@
+from django.db.models.functions import Coalesce
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -8,7 +9,7 @@ from rest_framework import status, viewsets, generics
 from rest_framework.authtoken.models import Token
 from rest_framework import mixins
 from rest_framework import pagination
-from django.db.models import F, Sum, Q, Value as V, Count
+from django.db.models import F, Sum, Q, Value as V, Count, Subquery
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
@@ -31,7 +32,7 @@ from .serializers import (
     LikeSerializer,
     FollowSerializer,
     PayFormSerializer,
-    SearchResultSerializer)
+    SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer)
 from accounts.serializers import UserSerializer
 
 from api.pagination import FollowPagination, HomePagination, ProductSearchResultPagination, \
@@ -122,7 +123,8 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param format:
         :return:
         """
-        user = get_user(request)
+        user = request.user
+        print(user)
         product = get_object_or_404(Product, pk=pk)
         sold_products = Product.objects.filter(seller=product.seller,sold=True)
         try:
@@ -138,12 +140,16 @@ class ProductViewSet(viewsets.GenericViewSet):
             status = False
 
         serializer = ProductSerializer(product)
+        delivery_policy = DeliveryPolicySerializer(product.seller.delivery_policy)
+
+        related_products = self.get_related_products(product)
+        related_products = RelatedProductSerializer(related_products, many=True)
         return Response({
             'product': serializer.data,
             'isbagged': status,
             'liked': is_liked,
-            'general': product.seller.delivery_policy.general,
-            'mountain': product.seller.delivery_policy.mountain,
+            'delivery_policy': delivery_policy.data,
+            'related_produts': related_products.data
             # 'seller': {
             #     'id': product.seller.id,
             #     'reviews': 0,
@@ -151,6 +157,26 @@ class ProductViewSet(viewsets.GenericViewSet):
             #     'follower': len(follower),
             # },
         })
+
+    # TODO : filter by second category
+    def get_related_products(self, product):
+        second_category = product.second_category
+        tags = product.tag.all()
+        filtered_products = Product.objects\
+            .select_related('size','size__category','size__category__gender')\
+            .prefetch_related('tag').\
+            exclude(id=product.id).\
+            annotate(count=Count(
+                Case(
+                    When(
+                        tag__id__in=list(tag.id for tag in tags), then=1),
+                    output_field=IntegerField(),
+                )
+            )
+        ).distinct().order_by('-count')[:5]
+
+        return filtered_products
+
 
     # todo: response fix -> code and status
     @action(methods=['post'], detail=True)

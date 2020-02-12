@@ -27,6 +27,74 @@ class Category(models.Model):
         return ' -> '.join(full_path[::-1])
 
 
+class GenderDivision(models.Model):
+    """
+    성별 모델입니다.
+    """
+    MAN = 1
+    WOMAN = 2
+    UNISEX = 3
+    OTHER = 4
+
+    GENDER = (
+        (MAN, 'Man'),
+        (WOMAN, 'Woman'),
+        (UNISEX, 'Unisex'),
+        (OTHER, 'Other'),
+    )
+
+    name = models.IntegerField(choices=GENDER)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.get_name_display()
+
+
+class FirstCategory(models.Model):
+    """
+    대분류 모델입니다.
+    """
+    gender = models.ForeignKey('GenderDivision', on_delete=models.CASCADE,related_name='category')
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "[{}]{}".format(self.gender, self.name)
+
+
+class SecondCategory(models.Model):
+    """
+    소분류 모델입니다.
+    """
+    name = models.CharField(max_length=100)
+    parent = models.ForeignKey('FirstCategory', on_delete=models.CASCADE, related_name='second_category')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "[{}]_{}".format(self.parent, self.name)
+
+
+class Size(models.Model):
+    category = models.ForeignKey('FirstCategory', on_delete=models.CASCADE, related_name='size')
+    size_name = models.CharField(max_length=20, help_text="L, M 등과 같은 분류")
+    size = models.PositiveIntegerField(help_text='기본 size, 범위가 있다면 최소 사이즈')
+    size_max = models.PositiveIntegerField(null=True, blank=True, help_text='사이즈 범위가 있는 경우 최대 사이즈')
+    description = models.CharField(max_length=200, null=True, blank=True)
+
+    def __str__(self):
+        if self.size_max:
+            return "[{}] {}-{}".format(self.category.name, self.size, self.size_max)
+        if self.category.name == 'SHOES':
+            return "[{}] {} (cm)".format(self.category.name, self.size)
+        return "[{}] {}".format(self.category.name, self.size)
+
+
 class Tag(models.Model):
     tag = models.CharField(max_length=30)
 
@@ -47,7 +115,7 @@ class Tag(models.Model):
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name='상품명')
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
-    size = models.TextField()
+    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='product')
     price = models.IntegerField(verbose_name='가격')
     content = models.TextField(verbose_name='설명')
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -56,7 +124,8 @@ class Product(models.Model):
     sold = models.BooleanField(default=False, verbose_name='판매완료')
     on_discount = models.BooleanField(default=False,verbose_name='세일중')
     discount_rate = models.FloatField(default=0, verbose_name='할인율')
-    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.CASCADE)
+    first_category = models.ForeignKey(FirstCategory, on_delete=models.CASCADE)
+    second_category = models.ForeignKey(SecondCategory, on_delete=models.CASCADE)
     is_refundable = models.BooleanField(default=False)
     tag = models.ManyToManyField(Tag)
 
