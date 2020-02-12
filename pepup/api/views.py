@@ -96,6 +96,7 @@ class ProductViewSet(viewsets.GenericViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(methods=['get'], detail=True)
     def search(self, request, pk):
         """
         [DEPRECATED] -> SearchViewSet
@@ -152,6 +153,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         })
 
     # todo: response fix -> code and status
+    @action(methods=['post'], detail=True)
     def like(self, request, pk):
         """
         method: POST
@@ -171,6 +173,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         serializer = LikeSerializer(like)
         return Response(serializer.data)
 
+    @action(methods=['get'], detail=True)
     def liked(self, request, pk):
         """
         :method: GET
@@ -280,6 +283,7 @@ class FollowViewSet(viewsets.GenericViewSet):
 
     # todo: response -> status, code
     # todo: user anonymous fix
+    @action(methods=['post'], detail=False)
     def following(self, request):
         """
         :method: POST
@@ -317,6 +321,7 @@ class TradeViewSet(viewsets.GenericViewSet):
     queryset = Trade.objects.all()
     serializer_class = TradeSerializer
 
+    @action(methods=['get'], detail=True)
     def bagging(self, request, pk):
         """
         method: GET
@@ -347,6 +352,7 @@ class TradeViewSet(viewsets.GenericViewSet):
 
     # todo: code, status and serializer data
     # todo: query duplicate fix
+    @action(methods=['get'], detail=False)
     def cart(self, request):
         """
         method: GET
@@ -361,6 +367,7 @@ class TradeViewSet(viewsets.GenericViewSet):
         return Response(self.groupbyseller(serializer.data))
 
     # todo: code, status and serializer data
+    @action(methods=['post'], detail=False)
     def cancel(self, request):
         """
         method: POST
@@ -425,6 +432,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         )
         return True
 
+    @action(methods=['post'], detail=False)
     def get_payform(self, request):
         """
         method: POST
@@ -473,6 +481,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 trade = Trade.objects.get(pk=trade)
                 self.deal.trade_set.add(trade)
 
+    @action(methods=['post'], detail=False)
     def confirm(self, request):
         """
         method: POST
@@ -485,6 +494,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
             return self.response
         return Response({"code": -1}, status=status.HTTP_200_OK)
 
+    @action(methods=['post'], detail=False)
     def done(self, request):
         """
         method: POST
@@ -570,29 +580,17 @@ class RefundInfo(APIView):
             return JsonResponse(cancel_result)
 
 
-class BrandView(APIView):
-    def get(self, request):
-        brand = Brand.objects.all()
-        serializers = BrandSerializer(brand, many=True)
-        return JsonResponse(serializers.data, safe=False)
-
-    def post(self, request):
-        brand_name = request.data['brand']
-        if Brand.objects.filter(name=brand_name).exists():
-            return Response({"return": "Already exists"})
-        else:
-            brand = Brand.objects.create(
-                name=brand_name
-            )
-            serializers = BrandSerializer(brand)
-            return JsonResponse(serializers.data)
-
-
 class SearchViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, ]
     serializer_class = SearchResultSerializer
 
+    @action(methods=['post'],detail=False)
     def searching(self, request):
+        """
+        :methods: POST
+        :param request:
+        :return:
+        """
         keyword = request.data['keyword']
         if len(keyword) < 1:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -605,6 +603,7 @@ class SearchViewSet(viewsets.GenericViewSet):
         searched_data['seller_result'] = seller_qs.data
         return Response(searched_data)
 
+    @action(methods=['post'], detail=False)
     def product_search(self, request):
         """
         product name 이 포함된 products 상품을 return 합니다.
@@ -625,6 +624,7 @@ class SearchViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    @action(methods=['get'], detail=True)
     def tag_search(self, request, pk):
         """
         searching api 에서 주어졌던 tag_id 기반으로 상품을 return 합니다.

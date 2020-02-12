@@ -12,9 +12,12 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.views import APIView
-from rest_framework import exceptions
-from django.http import JsonResponse
+
+# allauth social
+from allauth.socialaccount.providers.kakao.views import KakaoOAuth2Adapter
+from rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from rest_framework.viewsets import ViewSetMixin
 
 from accounts.serializers import (
     TokenSerializer,
@@ -54,6 +57,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         response_serializer = TokenSerializer
         return response_serializer
 
+    @action(methods=['get'], detail=False)
     def check_userinfo(self, request):
         """
         :method: GET
@@ -82,6 +86,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         response = Response({'code': 1, 'status': '로그인에 성공하였습니다.', 'token':self.token.key}, status=status.HTTP_200_OK)
         return response
 
+    @action(methods=['post'],detail=False)
     def login(self, request, *args, **kwargs):
         """
         method: POST
@@ -100,6 +105,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             return Response({'code': 2, 'status': '닉네임이 없습니다.', 'token': self.token.key}, status=status.HTTP_200_OK)
         return self.get_response()
 
+    @action(methods=['post'], detail=False)
     def logout(self, request):
         """
         method: post
@@ -122,6 +128,7 @@ class AccountViewSet(viewsets.GenericViewSet):
                             status=status.HTTP_200_OK)
         return response
 
+    @action(methods=['post'], detail=False)
     def check_email(self, request):
         """
         method: POST
@@ -134,6 +141,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         except User.DoesNotExist:
             return Response({'code': 1, 'status': '사용가능한 이메일입니다.'})
 
+    @action(methods=['post'], detail=False)
     def check_nickname(self, request):
         """
         method: POST
@@ -233,6 +241,7 @@ class AccountViewSet(viewsets.GenericViewSet):
                 self.response = Response({'code': -1, "status": _("key does not match")},
                                          status=status.HTTP_200_OK)
 
+    @action(methods=['post'], detail=False)
     def confirmsms(self, request):
         """
         method: POST
@@ -258,6 +267,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'code': -10, 'status': _('요청 바디가 없습니다.')}, status=status.HTTP_200_OK)
         return self.response
 
+    @action(methods=['post'], detail=False)
     def signup(self, request):
         """
         method: POST
@@ -306,6 +316,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response(self.serializer.errors)
 
     # todo: anonymous user fix
+    @action(methods=['get', 'post'], detail=False)
     def profile(self, request):
         self.request = request
         self.user = self.request.user
@@ -319,6 +330,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'profile': self.serializer.data})
         return self.response
 
+    @action(methods=['post'], detail=False)
     def search_address(self, request, currentpage=1):
         jusomaster = JusoMaster()
         if request.data.get('currentpage'):
@@ -336,6 +348,7 @@ class AccountViewSet(viewsets.GenericViewSet):
 
     # todo: anonymous user fix
     # todo: response -> code and status, address
+    @action(methods=['get'], detail=False)
     def get_address(self, request):
         """
         method: GET
@@ -349,6 +362,7 @@ class AccountViewSet(viewsets.GenericViewSet):
 
     # todo: anonymous user fix
     # todo: response -> code and status
+    @action(methods=['post'], detail=False)
     def delete_address(self, request):
         """
         method: POST
@@ -369,6 +383,7 @@ class AccountViewSet(viewsets.GenericViewSet):
 
     # todo: anonymous user fix
     # todo: response -> code and status
+    @action(methods=['post'], detail=False)
     def set_address(self, request):
         """
         Method: POST
@@ -420,6 +435,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'code': -4, 'status': 'no smsconfirm'}, status=status.HTTP_200_OK)
 
     # todo: response -> code, status
+    @action(methods=['post'], detail=False)
     def find_email(self, request):
         """
         method: POST
@@ -487,6 +503,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         else:
             self.response = Response({'code': -1, 'status': 'key does not match'},status=status.HTTP_200_OK)
 
+    @action(methods=['post'], detail=False)
     def reset_password_sms(self, request):
         """
         method: POST
@@ -510,6 +527,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'code': -10, 'status': '요청바디가 없습니다.'}, status=status.HTTP_200_OK)
         return self.response
 
+    @action(methods=['post'], detail=False)
     def reset_password(self, request):
         """
         method:POST
@@ -531,13 +549,6 @@ class AccountViewSet(viewsets.GenericViewSet):
                 return Response({'code': -2, 'status': '8자 이상의 비밀번호를 입력해주세요'},status=status.HTTP_200_OK)
         else:
             return Response({'code': -4, 'status': '요청바디가 없습니다.'}, status=status.HTTP_200_OK)
-
-
-from allauth.socialaccount.providers.kakao.views import KakaoOAuth2Adapter
-from rest_auth.registration.views import SocialLoginView
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from allauth.socialaccount.providers.instagram.views import InstagramOAuth2Adapter
-from rest_framework.viewsets import ViewSetMixin
 
 
 class SocialUserViewSet(ViewSetMixin, SocialLoginView):
