@@ -232,7 +232,7 @@ class FollowViewSet(viewsets.GenericViewSet):
             .filter(tag__follow__in=self.follows_by_tag) \
             .annotate(by=Value(2, output_field=IntegerField()))
 
-    def get_serializer(self, *args, **kwargs):
+    def custom_get_serializer(self, *args, **kwargs):
         serializer_class = self.get_serializer_class()
         kwargs['context'].update(self.get_serializer_context())
         return serializer_class(*args, **kwargs)
@@ -252,7 +252,7 @@ class FollowViewSet(viewsets.GenericViewSet):
         print(list(self.products_by_seller.values_list('id', flat=True)))
         page = self.paginate_queryset(self.products_by_seller | self.products_by_tag)
         if page is not None:
-            serializer = self.get_serializer(page, many=True, context={"request": self.request, "by_seller": list(self.products_by_seller.values_list('id', flat=True))})
+            serializer = self.custom_get_serializer(page, many=True, context={"request": self.request, "by_seller": list(self.products_by_seller.values_list('id', flat=True))})
             return self.get_paginated_response({
                 "products": serializer.data,
                 "recommended": self.recommended.data
