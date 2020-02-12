@@ -61,7 +61,12 @@ class ProductViewSet(viewsets.GenericViewSet):
         """
         self.serializer_class = MainSerializer
         try:
-            products = Product.objects.all()
+            products = self.queryset\
+                .select_related('seller__profile')\
+                .prefetch_related('seller___to') \
+                .prefetch_related('seller__product_set__seller')\
+                .prefetch_related(Prefetch('seller__product'))\
+                .prefetch_related('prodthumbnail_set').all()
         except Product.DoesNotExist:
             raise Http404
         page = self.paginate_queryset(products)
