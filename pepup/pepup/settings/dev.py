@@ -36,7 +36,7 @@ DATABASES = {
 
 SETTING_PRD_DIC = get_server_info_value("production")
 
-# AWS
+# # AWS
 AWS_ACCESS_KEY_ID = SETTING_PRD_DIC['S3']['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = SETTING_PRD_DIC['S3']['AWS_SECRET_ACCESS_KEY']
 AWS_DEFAULT_ACL = SETTING_PRD_DIC['S3']['AWS_DEFAULT_ACL']
@@ -62,6 +62,11 @@ DEFAULT_FILE_STORAGE = 'pepup.storage.MediaStorage'
 
 STATIC_ROOT = "https://%s/static/" % AWS_S3_CUSTOM_DOMAIN
 MEDIA_ROOT = "https://%s/media/" % AWS_S3_CUSTOM_DOMAIN
+
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, "landing", "static"),
+)
+
 
 # CORS
 CORS_ALLOW_CREDENTIALS = True
