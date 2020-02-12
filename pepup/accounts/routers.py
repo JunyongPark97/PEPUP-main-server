@@ -1,6 +1,5 @@
-from rest_framework.routers import Route, DefaultRouter, SimpleRouter, DynamicRoute
-from .views import AccountViewSet, KakaoUserViewSet
-
+from rest_framework.routers import DefaultRouter
+from .views import AccountViewSet, KakaoUserViewSet, GoogleUserViewSet
 
 router = DefaultRouter()
 router.register('', AccountViewSet, basename='accounts')

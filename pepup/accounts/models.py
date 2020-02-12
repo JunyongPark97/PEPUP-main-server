@@ -79,6 +79,21 @@ class Profile(models.Model):
     # background_img = models.ImageField(upload_to=img_directory_path_profile, null=True, blank=True)
     introduce = models.TextField(verbose_name='소개', default="")
 
+    @property
+    def thumbnail_img_url(self):
+        """
+        1. thumbnail_img가 자신이 올린 것이 있을 경우
+        2. 없으면 socialaccount의 last의 img사용
+        3. 없을시 default사용
+        """
+        if self.thumbnail_img.name != "default_profile.png":
+            return self.thumbnail_img.url
+        elif hasattr(self.user, 'socialaccount_set'):
+            if 'properties' in self.user.socialaccount_set.last().extra_data:
+                return self.user.socialaccount_set.last().extra_data['properties'].get('thumbnail')
+        else:
+            return self.thumbnail_img.url
+
 
 class Address(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

@@ -598,18 +598,12 @@ class KakaoUserViewSet(SocialUserViewSet):
     def create(self):
         userdata = self.serializer.extra_data['kakao_account'].get('profile')
         nickname = userdata.get('nickname')
-        profile_image_url = userdata.get('profile_image_url')
-        thumbnail_image_url = userdata.get('thumbnail_image_url')
+        if not hasattr(self.user, 'profile'):
+            Profile.objects.create(user=self.user)
         if nickname:
             self.user.nickname = nickname
-        profile, _ = Profile.objects.get_or_create(user=self.user)
-        if profile_image_url:
-            self.user.profile.thumbnail_img = profile_image_url
-        elif thumbnail_image_url:
-            self.user.profile.thumbnail_img = thumbnail_image_url
-        profile.save()
-        self.user.save()
+            self.user.save()
 
 
-class GoogleLogin(SocialLoginView):
+class GoogleUserViewSet(SocialUserViewSet):
     adapter_class = GoogleOAuth2Adapter
