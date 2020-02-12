@@ -92,8 +92,8 @@ class DeliveryPolicy(models.Model):
     seller = models.OneToOneField(User, on_delete=models.CASCADE, related_name='delivery_policy')
     general = models.IntegerField(verbose_name='일반')
     mountain = models.IntegerField(verbose_name='산간지역')
-    amount = models.IntegerField(verbose_name='총액조건')
-    volume = models.IntegerField(verbose_name='총량조건')
+    amount = models.IntegerField(verbose_name='총액조건', null=True, blank=True)
+    volume = models.IntegerField(verbose_name='총량조건', null=True, blank=True)
 
     def get_delivery_charge(self, amount,volume,mountain=False):
         ret = 0
