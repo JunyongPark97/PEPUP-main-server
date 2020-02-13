@@ -61,7 +61,10 @@ class RelatedProductSerializer(serializers.ModelSerializer):
         return ProdThumbnailSerializer(thumbnails, many=True).data
 
     def get_size(self, obj):
-        return "{}".format(obj.size.size_name)
+        if hasattr(obj.size, 'size_name'):
+            return "{}".format(obj.size.size_name)
+        else:
+            return ""
 
 
 class ProductSerializer(serializers.ModelSerializer):

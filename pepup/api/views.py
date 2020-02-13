@@ -16,7 +16,7 @@ from django.db.models import Q as q
 from django.db.models import Prefetch
 from django.db.models import IntegerField, Value, Case, When
 from .loader import load_credential
-
+from django.contrib.auth import logout
 # model
 from accounts.models import User, Profile
 from .models import (Product, ProdThumbnail, Payment,
@@ -129,14 +129,15 @@ class ProductViewSet(viewsets.GenericViewSet):
         :return:
         """
         user = request.user
-        product = get_object_or_404(Product, pk=pk)
-        sold_products = Product.objects.filter(seller=product.seller,sold=True)
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response(status = status.HTTP_404_NOT_FOUND)
         try:
             like = Like.objects.get(user=user, product=product,is_liked=False)
             is_liked = like.is_liked
         except Like.DoesNotExist:
             is_liked = False
-        follower = get_follower(product.seller)
         is_bagged = Trade.objects.filter(product=product, buyer=user)
         if is_bagged.exists():
             status = True
@@ -147,13 +148,17 @@ class ProductViewSet(viewsets.GenericViewSet):
         delivery_policy = DeliveryPolicySerializer(product.seller.delivery_policy)
 
         related_products = self.get_related_products(product)
-        related_products = RelatedProductSerializer(related_products, many=True)
+        print(related_products)
+        if related_products:
+            related_products = RelatedProductSerializer(related_products, many=True).data
+        else:
+            related_products = None
         return Response({
             'product': serializer.data,
             'isbagged': status,
             'liked': is_liked,
             'delivery_policy': delivery_policy.data,
-            'related_produts': related_products.data
+            'related_products': related_products
             # 'seller': {
             #     'id': product.seller.id,
             #     'reviews': 0,
