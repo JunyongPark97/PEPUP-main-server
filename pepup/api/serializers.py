@@ -98,7 +98,7 @@ class FollowSerializer(serializers.ModelSerializer):
     def get_liked(self, obj):
         request = self.context['request']
         user = request.user
-        try :
+        try:
             liked = obj.like_set.get(user=user).is_liked
             return liked
         except:
@@ -234,3 +234,10 @@ class SearchResultSerializer(serializers.ModelSerializer):
             return liked
         except:
             return False
+
+
+class FollowingSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Follow
+        fields = ['_to', 'tag', 'is_follow']

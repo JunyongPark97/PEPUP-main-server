@@ -31,7 +31,9 @@ from .serializers import (
     LikeSerializer,
     FollowSerializer,
     PayFormSerializer,
-    SearchResultSerializer)
+    SearchResultSerializer,
+    FollowingSerializer
+)
 from accounts.serializers import UserSerializer
 
 from api.pagination import FollowPagination, HomePagination, ProductSearchResultPagination, \
@@ -64,9 +66,8 @@ class ProductViewSet(viewsets.GenericViewSet):
             products = self.queryset\
                 .select_related('seller__profile')\
                 .prefetch_related('seller___to') \
-                .prefetch_related('seller__product_set__seller')\
-                .prefetch_related(Prefetch('seller__product'))\
-                .prefetch_related('prodthumbnail_set').all()
+                .prefetch_related(Prefetch('seller__product_set', queryset=self.queryset.filter(sold=True)))\
+                .prefetch_related('seller__product_set__seller').prefetch_related('prodthumbnail_set').all()
         except Product.DoesNotExist:
             raise Http404
         page = self.paginate_queryset(products)
@@ -127,7 +128,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param format:
         :return:
         """
-        user = get_user(request)
+        user = request.user
         product = get_object_or_404(Product, pk=pk)
         sold_products = Product.objects.filter(seller=product.seller,sold=True)
         try:
@@ -158,7 +159,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         })
 
     # todo: response fix -> code and status
-    @action(methods=['post'], detail=True)
+    @action(methods=['post'], detail=True,serializer_class=LikeSerializer)
     def like(self, request, pk):
         """
         method: POST
@@ -175,7 +176,7 @@ class ProductViewSet(viewsets.GenericViewSet):
             else:
                 like.is_liked = True
             like.save()
-        serializer = LikeSerializer(like)
+        serializer = self.get_serializer(like)
         return Response(serializer.data)
 
     @action(methods=['get'], detail=True)
@@ -206,6 +207,7 @@ class FollowViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
     serializer_class = FollowSerializer
     pagination_class = FollowPagination
+    permission_classes = [IsAuthenticated]
 
     def get_recommended_seller(self):
         self.recommended_seller = User.objects.all()
@@ -265,60 +267,64 @@ class FollowViewSet(viewsets.GenericViewSet):
         serializer = MainSerializer(self.products_by_tag|self.products_by_seller, many=True)
         return Response(serializer.data)
 
-    def _check_follow(self,_from, _to, tag):
-        follows = Follow.objects.get(q(_from=_from)&(q(_to=_to)|q(tag=tag)))
-        if follows:
-            return follows
-        else:
-            return False
-
-    # todo: response -> status code
-    # todo: user anonymous fix
+    @action(methods=['post'], detail=False, serializer_class=FollowingSerializer)
     def check_follow(self, request):
         """
         :method: POST
         :param request:
-        :return: code, status
+        :return: results or status
         """
         _from = request.user
-        follow = self._check_follow(_from,request.POST['_to'],request.POST['tag'])
-        if follow:
-            return Response(FollowSerializer(follow))
-        return Response({'status':'no following'})
+        _to = request.data.get('_to')
+        tag = request.data.get('tag')
 
-    # todo: response -> status, code
-    # todo: user anonymous fix
-    @action(methods=['post'], detail=False)
+        if _to:
+            try:
+                follow = Follow.objects.get(_from=_from, _to_id=_to)
+            except Follow.DoesNotExist:
+                return Response({'returns': {'is_follow': False}}, status=status.HTTP_200_OK)
+        elif tag:
+            try:
+                follow = Follow.objects.get(_from=_from, tag_id=tag)
+            except Follow.DoesNotExist:
+                return Response({'returns': {'is_follow': False}}, status=status.HTTP_200_OK)
+        else:
+            return Response({'status': '요청바디가 없습니다.'},status=status.HTTP_400_BAD_REQUEST)
+        return Response({'returns': {'is_follow': follow.is_follow}}, status=status.HTTP_200_OK)
+
+    @action(methods=['post'], detail=False, serializer_class=FollowingSerializer)
     def following(self, request):
         """
         :method: POST
         :param request:
-        :return: code, status
+        :return: results or status
         """
         _from = request.user
-        if request.data['_to']:
-            _to = request.data['_to']
-            _to = get_object_or_404(User,pk=_to)
-            follow, created = Follow.objects.get_or_create(_from=_from, _to=_to)
-        elif request.data['tag']:
-            tag = request.data['tag']
-            tag = get_object_or_404(Tag, pk=tag)
-            follow, created = Follow.objects.get_or_create(_from=_from, tag=tag)
+        _to = request.data.get('_to')
+        tag = request.data.get('tag')
+        if _to:
+            if _from.pk == int(_to):
+                return Response({'status': "user can't follow himself"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+            try:
+                _to = User.objects.get(pk=_to)
+                follow, created = Follow.objects.get_or_create(_from=_from, _to=_to)
+            except User.DoesNotExist:
+                return Response({'status': "_to does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        elif tag:
+            try:
+                tag = Tag.objects.get(pk=tag)
+                follow, created = Follow.objects.get_or_create(_from=_from, tag_id=tag)
+            except Tag.DoesNotExist:
+                return Response({'status': "Tag does not exist"}, status=status.HTTP_404_NOT_FOUND)
         else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': '요청바디가 없습니다.'},status=status.HTTP_400_BAD_REQUEST)
         if not created:
             if follow.is_follow:
                 follow.is_follow = False
             else:
                 follow.is_follow = True
             follow.save()
-            return Response(status=status.HTTP_206_PARTIAL_CONTENT)
-        return Response(status=status.HTTP_201_CREATED)
-
-    # def following(self, request):
-    #     _from = get_user(request)
-    #     print(request.data['_to'])
-    #     self._following(_from, request)
+        return Response({'results': self.get_serializer(follow).data}, status=status.HTTP_200_OK)
 
 
 # Cart
