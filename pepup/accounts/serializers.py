@@ -133,7 +133,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'nickname', 'email', 'profile', 'reviews', 'sold', 'followers']
 
     def get_sold(self, obj):
-        return obj.product_set.filter(sold=True).count()
+        return obj.product_set.count()
 
     def get_reviews(self, obj):
         return 0
