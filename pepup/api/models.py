@@ -56,7 +56,7 @@ class FirstCategory(models.Model):
     """
     대분류 모델입니다.
     """
-    gender = models.ForeignKey('GenderDivision', on_delete=models.CASCADE,related_name='category')
+    gender = models.ForeignKey('GenderDivision', on_delete=models.CASCADE, related_name='category')
     name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,7 +81,7 @@ class SecondCategory(models.Model):
 
 
 class Size(models.Model):
-    category = models.ForeignKey('FirstCategory', on_delete=models.CASCADE, related_name='size')
+    category = models.ForeignKey('FirstCategory', null=True, on_delete=models.CASCADE, related_name='size')
     size_name = models.CharField(max_length=20, help_text="L, M 등과 같은 분류")
     size = models.PositiveIntegerField(help_text='기본 size, 범위가 있다면 최소 사이즈')
     size_max = models.PositiveIntegerField(null=True, blank=True, help_text='사이즈 범위가 있는 경우 최대 사이즈')
@@ -115,7 +115,7 @@ class Tag(models.Model):
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name='상품명')
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
-    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='product')
+    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='product', null=True)
     price = models.IntegerField(verbose_name='가격')
     content = models.TextField(verbose_name='설명')
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -124,8 +124,8 @@ class Product(models.Model):
     sold = models.BooleanField(default=False, verbose_name='판매완료')
     on_discount = models.BooleanField(default=False,verbose_name='세일중')
     discount_rate = models.FloatField(default=0, verbose_name='할인율')
-    first_category = models.ForeignKey(FirstCategory, on_delete=models.CASCADE)
-    second_category = models.ForeignKey(SecondCategory, on_delete=models.CASCADE)
+    first_category = models.ForeignKey(FirstCategory, on_delete=models.CASCADE, null=True)
+    second_category = models.ForeignKey(SecondCategory, on_delete=models.CASCADE, null=True)
     is_refundable = models.BooleanField(default=False)
     tag = models.ManyToManyField(Tag)
 
