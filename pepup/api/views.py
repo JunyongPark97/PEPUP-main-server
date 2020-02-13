@@ -132,7 +132,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         try:
             product = Product.objects.get(pk=pk)
         except Product.DoesNotExist:
-            return Response(status = status.HTTP_404_NOT_FOUND)
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
         try:
             like = Like.objects.get(user=user, product=product,is_liked=False)
             is_liked = like.is_liked
@@ -140,9 +140,9 @@ class ProductViewSet(viewsets.GenericViewSet):
             is_liked = False
         is_bagged = Trade.objects.filter(product=product, buyer=user)
         if is_bagged.exists():
-            status = True
+            bagged = True
         else:
-            status = False
+            bagged = False
 
         serializer = ProductSerializer(product)
         delivery_policy = DeliveryPolicySerializer(product.seller.delivery_policy)
@@ -155,7 +155,7 @@ class ProductViewSet(viewsets.GenericViewSet):
             related_products = None
         return Response({
             'product': serializer.data,
-            'isbagged': status,
+            'isbagged': bagged,
             'liked': is_liked,
             'delivery_policy': delivery_policy.data,
             'related_products': related_products
@@ -227,7 +227,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         try:
             like = Like.objects.get(user=user, product=product)
         except Like.DoesNotExist:
-            return Response({'returns': {'is_liked':False}},status.HTTP_200_OK)
+            return Response({'returns': {'is_liked':False}}, status=status.HTTP_200_OK)
         return Response({'returns': self.get_serializer(like).data}, status.HTTP_200_OK)
 
     def update(self, request, pk=None):
