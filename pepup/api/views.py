@@ -183,7 +183,7 @@ class ProductViewSet(viewsets.GenericViewSet):
 
 
     # todo: response fix -> code and status
-    @action(methods=['post'], detail=True,serializer_class=LikeSerializer)
+    @action(methods=['post'], detail=True, serializer_class=LikeSerializer)
     def like(self, request, pk):
         """
         method: POST
@@ -192,7 +192,10 @@ class ProductViewSet(viewsets.GenericViewSet):
         :return: code, status
         """
         user = request.user
-        product = Product.objects.get(pk=pk)
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({'status': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
         like, tf = Like.objects.get_or_create(user=user, product=product)
         if not tf:
             if like.is_liked:
@@ -201,9 +204,9 @@ class ProductViewSet(viewsets.GenericViewSet):
                 like.is_liked = True
             like.save()
         serializer = self.get_serializer(like)
-        return Response(serializer.data)
+        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
 
-    @action(methods=['get'], detail=True)
+    @action(methods=['get'], detail=True, serializer_class=LikeSerializer)
     def liked(self, request, pk):
         """
         :method: GET
@@ -212,10 +215,15 @@ class ProductViewSet(viewsets.GenericViewSet):
         :return: cod and status
         """
         user = request.user
-        product = Product.objects.get(pk=pk)
-        like = get_object_or_404(Like, user=user,product=product)
-        serializer = LikeSerializer(like)
-        return Response(serializer.data)
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({'status': 'product does not exist'},status=status.HTTP_404_NOT_FOUND)
+        try:
+            like = Like.objects.get(user=user, product=product)
+        except Like.DoesNotExist:
+            return Response({'returns': {'is_liked':False}},status.HTTP_200_OK)
+        return Response({'returns': self.get_serializer(like).data}, status.HTTP_200_OK)
 
     def update(self, request, pk=None):
         pass

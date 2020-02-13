@@ -19,7 +19,7 @@ class BrandSerializer(serializers.ModelSerializer):
 class LikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Like
-        fields = ['user','product','is_liked']
+        fields = ['is_liked']
 
 
 class ProdThumbnailSerializer(serializers.ModelSerializer):
