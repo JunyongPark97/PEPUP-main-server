@@ -3,7 +3,7 @@ from rest_framework.authtoken.models import Token
 from django.http import Http404
 from django.conf import settings
 from .models import (Product, Brand, Payment,
-                     Trade, Category, ProdThumbnail,
+                     Trade, ProdThumbnail,
                      Like, Follow, Deal, Tag, SecondCategory)
 from accounts.models import User, DeliveryPolicy
 

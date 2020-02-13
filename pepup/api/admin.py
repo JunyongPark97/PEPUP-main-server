@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Brand, Product, Trade, ProdThumbnail, Like, Category, Tag, Follow, GenderDivision, FirstCategory, \
+from .models import Brand, Product, Trade, ProdThumbnail, Like, Tag, Follow, GenderDivision, FirstCategory, \
     SecondCategory, Size
 
 
@@ -49,7 +49,6 @@ admin.site.register(Product, ProductAdmin)
 admin.site.register(Trade, TradeAdmin)
 admin.site.register(ProdThumbnail)
 admin.site.register(Like)
-admin.site.register(Category)
 admin.site.register(Tag)
 admin.site.register(Follow, FollowAdmin)
 

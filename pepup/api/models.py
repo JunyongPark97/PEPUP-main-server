@@ -11,22 +11,6 @@ class Brand(models.Model):
         return self.name
 
 
-class Category(models.Model):
-    name = models.CharField(max_length=200)
-    parent = models.ForeignKey('self', blank=True, null=True, related_name='children', on_delete=models.CASCADE)
-
-    class Meta:
-        verbose_name_plural = "categories"
-
-    def __str__(self):
-        full_path = [self.name]
-        k = self.parent
-        while k is not None:
-            full_path.append(k.name)
-            k = k.parent
-        return ' -> '.join(full_path[::-1])
-
-
 class GenderDivision(models.Model):
     """
     성별 모델입니다.
@@ -101,16 +85,6 @@ class Tag(models.Model):
     def __str__(self):
         return self.tag
 
-# todo: size
-# class Size(models.Model):
-#     genders = [
-#         (1, 'unisex'),
-#         (2, 'man'),
-#         (3, 'woman'),
-#     ]
-#
-#     gender = models.IntegerField(choices=genders)
-
 
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name='상품명')
@@ -158,19 +132,11 @@ class ProdThumbnail(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     thumbnail = models.FileField(upload_to=img_directory_path)
 
-    # def save(self, *args, **kwargs):
-    #     if self.thumbnail:
-    #         self.thumbnail =
-
 
 class Like(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,related_name='liker',on_delete=models.CASCADE)
     product = models.ForeignKey(Product,on_delete=models.CASCADE)
     is_liked = models.BooleanField(default=True)
-
-    # todo :
-    # sold 후 delete 불가능하게!
-    # def lock_delete():
 
 
 class Delivery(models.Model):
