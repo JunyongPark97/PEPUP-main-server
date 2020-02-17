@@ -97,7 +97,6 @@ class FollowSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
     thumbnails = serializers.SerializerMethodField()
-    category = serializers.SerializerMethodField()
     tag = serializers.StringRelatedField(many=True)
     by = serializers.SerializerMethodField()
     discount_price = serializers.SerializerMethodField()
@@ -113,14 +112,6 @@ class FollowSerializer(serializers.ModelSerializer):
             return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
         return ProdThumbnailSerializer(thumbnails, many=True).data
 
-
-    def get_category(self, obj):
-        k = obj.category
-        rtn = []
-        while k is not None:
-            rtn.insert(0, k.name)
-            k = k.parent
-        return rtn
 
     def get_by(self, obj):
         print(self.context)

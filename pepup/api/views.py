@@ -262,7 +262,7 @@ class FollowViewSet(viewsets.GenericViewSet):
             .prefetch_related('tag')\
             .filter(_to=None)
         self.products_by_seller = Product.objects\
-            .select_related('seller', 'category', 'brand')\
+            .select_related('seller', 'brand')\
             .select_related('seller__profile')\
             .prefetch_related('seller___to')\
             .prefetch_related('tag')\
