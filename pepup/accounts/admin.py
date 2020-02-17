@@ -22,8 +22,8 @@ class UserAdmin(DjangoUserAdmin):
             'fields': ('email', 'password1', 'password2'),
         }),
     )
-    list_display = ('email', 'first_name', 'last_name', 'is_staff')
-    search_fields = ('email', 'first_name', 'last_name')
+    list_display = ('email', 'pk', 'nickname', 'first_name', 'last_name', 'is_staff')
+    search_fields = ('email', 'first_name', 'last_name', 'nickname')
     ordering = ('email',)
 
 
@@ -31,8 +31,11 @@ class DeliveryPolicyAdmin(admin.ModelAdmin):
     list_display = ['seller','general','mountain','amount','volume']
 
 
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'user_id']
+
 admin.site.register(PhoneConfirm)
-admin.site.register(Profile)
+admin.site.register(Profile, ProfileAdmin)
 admin.site.register(WalletLog)
 admin.site.register(DeliveryPolicy,DeliveryPolicyAdmin)
 admin.site.register(Address)
