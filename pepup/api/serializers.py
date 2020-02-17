@@ -195,13 +195,24 @@ class ProductForTradeSerializer(serializers.ModelSerializer):
     def get_discounted_price(self,obj):
         return obj.discounted_price
 
+
+class PaymentInfoForTrade(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryPolicy
+        fields = '__all__'
+
+
 class TradeSerializer(serializers.ModelSerializer):
     product = ProductForTradeSerializer(read_only=True)
     seller = SellerForTradeSerializer()
+    payinfo = serializers.SerializerMethodField()
 
     class Meta:
         model = Trade
-        fields = ('id', 'product', 'seller')
+        fields = ('id', 'product', 'seller', 'payinfo')
+
+    def get_payinfo(self, obj):
+        return PaymentInfoForTrade(obj.seller.delivery_policy).data
 
 
 class FilterSerializer(serializers.Serializer):

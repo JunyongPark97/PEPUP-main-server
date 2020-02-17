@@ -387,9 +387,34 @@ class TradeViewSet(viewsets.GenericViewSet):
         store = {}
         for d in dict_ls:
             if d['seller']['id'] in store.keys():
-                store[d['seller']['id']]['products'].append({'trade_id':d['id'],'product':d['product']})
+                store[d['seller']['id']]['products']\
+                    .append({'trade_id': d['id'], 'product': d['product']})
+                store[d['seller']['id']]['payinfo']['total'] += d['product']['discounted_price']
+                if store[d['seller']['id']]['payinfo']['lack_amount'] > 0:
+                    store[d['seller']['id']]['payinfo']['lack_amount'] -= d['product']['discounted_price']
+                elif store[d['seller']['id']]['payinfo']['delivery_charge'] > 0:
+                    store[d['seller']['id']]['payinfo']['delivery_charge'] = 0
+                if store[d['seller']['id']]['payinfo']['lack_volume'] > 0:
+                    store[d['seller']['id']]['payinfo']['lack_volume'] -= 1
+                elif store[d['seller']['id']]['payinfo']['delivery_charge'] > 0:
+                    store[d['seller']['id']]['payinfo']['delivery_charge'] = 0
             else:
-                store[d['seller']['id']] = {'seller': d['seller'],'products': [{'trade_id': d['id'], 'product': d['product']}]}
+                lack_amount = d['payinfo']['amount'] - d['product']['discounted_price']
+                lack_volume = d['payinfo']['volume'] - 1
+                if lack_amount <= 0 or lack_volume <= 0:
+                    delivery_charge = 0
+                else:
+                    delivery_charge = d['payinfo']['general']
+                store[d['seller']['id']] = {
+                    'seller': d['seller'],
+                    'products': [{'trade_id': d['id'], 'product': d['product']}],
+                    'payinfo': {
+                        'total': d['product']['discounted_price'],
+                        'delivery_charge': delivery_charge,
+                        'lack_amount': lack_amount,
+                        'lack_volume': lack_volume
+                    }
+                }
         for key in store:
             ret_ls.append(store[key])
         return ret_ls
