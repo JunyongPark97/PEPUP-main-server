@@ -1,3 +1,7 @@
+import json
+
+import requests
+from django.db import transaction
 from django.db.models.functions import Coalesce
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -31,12 +35,13 @@ from .serializers import (
     LikeSerializer,
     FollowSerializer,
     PayFormSerializer,
-    SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer,FollowingSerializer)
+    SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
+    StoreProductSerializer, StoreSerializer, StoreLikeSerializer)
 
 from accounts.serializers import UserSerializer
 
 from api.pagination import FollowPagination, HomePagination, ProductSearchResultPagination, \
-    TagSearchResultPagination
+    TagSearchResultPagination, StorePagination
 
 # bootpay
 from .Bootpay import BootpayApi
@@ -83,23 +88,50 @@ class ProductViewSet(viewsets.GenericViewSet):
                 thumbnail=thum
             )
 
+    @transaction.atomic
     def create(self, request):
         """
         :method: POST
         :param request:
         :return: code and status
         """
-        seller = get_user(request)
+        data = request.data.copy()
         brand = get_object_or_404(Brand, id=int(request.POST['brand_id']))
-        serializer = ProductSerializer(data=request.data,partial=True)
+        serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             product = serializer.save(
-                seller=seller,
+                # seller=seller,
                 brand=brand
             )
             self.set_prodThumbnail(product, request)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # TODO : TO BE CHANGE SERVER NAME
+    def request_classification(self, images):
+        server_url = ""
+        request_options = [
+            {
+                'version': 1,
+                'use_cache': True,
+            }
+        ]
+
+        data = {
+            'image_url': images,
+            'requests': request_options,
+        }
+
+        try:
+            result = json.loads(requests.post(  # Request / Post method
+                server_url,
+                json=data).text)
+
+        except:
+            result = None
+
+        return result[0]
+
 
     @action(methods=['get'], detail=True)
     def search(self, request, pk):
@@ -720,3 +752,50 @@ class SearchViewSet(viewsets.GenericViewSet):
             .filter(nickname__icontains=keyword)\
             .order_by('nickname')[:5]
         return queryset
+
+
+class StoreViewSet(viewsets.GenericViewSet):
+    pagination_class = StorePagination
+    permission_classes = [IsAuthenticated, ]
+
+    @action(methods=['get'], detail=True)
+    def shop(self, request, *args, **kwargs):
+
+        retrieve_user = self.get_retrieve_user(kwargs['pk'])
+
+        store_serializer = StoreSerializer(retrieve_user)
+
+        products = retrieve_user.product_set.all().order_by('-created_at')
+
+        paginator = StorePagination()
+        page = paginator.paginate_queryset(queryset=products, request=request)
+        products_serializer = StoreProductSerializer(page, many=True)
+
+        return paginator.get_paginated_response(products_serializer.data, profile=store_serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def liked(self, request, *args, **kwargs):
+
+        retrieve_user = self.get_retrieve_user(kwargs['pk'])
+        if not retrieve_user:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+        # if not retrieve_user.liker.all():
+        #     return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+        # TODO : order by created_at
+        likes = retrieve_user.liker.filter(is_liked=True)
+
+        paginator = StorePagination()
+        page = paginator.paginate_queryset(queryset=likes, request=request)
+        products_serializer = StoreLikeSerializer(page, many=True)
+        return paginator.get_paginated_response(products_serializer.data)
+
+    def get_retrieve_user(self, pk):
+
+        try:
+            retrieve_user = User.objects.get(pk=pk)
+        except:
+            retrieve_user = None
+
+        return retrieve_user

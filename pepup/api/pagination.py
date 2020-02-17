@@ -27,3 +27,24 @@ class TagSearchResultPagination(PepupPagination):
             ('tag_followed', tag_followed),
             ('results', data)
         ]))
+
+
+class StorePagination(PepupPagination):
+    page_size = 51
+
+    def get_paginated_response(self, data, profile=None):
+
+        if not profile:
+            return Response(OrderedDict([
+                ('count', self.page.paginator.count),
+                ('next', self.get_next_page_num()),
+                ('previous', self.get_prev_page_num()),
+                ('results', data)
+            ]))
+        return Response(OrderedDict([
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_page_num()),
+            ('previous', self.get_prev_page_num()),
+            ('profile', profile),
+            ('results', data)
+        ]))

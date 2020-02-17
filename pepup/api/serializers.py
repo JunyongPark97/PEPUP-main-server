@@ -93,6 +93,10 @@ class ProductSerializer(serializers.ModelSerializer):
         return "{}({})".format(obj.size.size_name, obj.size.size)
 
 
+class ProductCreateSerializer(serializers.ModelSerializer):
+    pass
+
+
 class FollowSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
@@ -310,3 +314,73 @@ class FollowingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ['_to', 'tag', 'is_follow']
+
+
+class StoreProductSerializer(serializers.ModelSerializer):
+    thumbnail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['thumbnail', 'id']
+
+    def get_thumbnail(self, obj):
+        thumbnail = obj.prodthumbnail_set.first()
+        if thumbnail:
+            return thumbnail.url
+        return "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"
+
+
+class StoreSerializer(serializers.ModelSerializer):
+    profile_img = serializers.SerializerMethodField()
+    profile_introduce = serializers.SerializerMethodField()
+    review_score = serializers.SerializerMethodField()
+    follower = serializers.SerializerMethodField()
+    following = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'nickname', 'profile_img', 'profile_introduce', 'review_score',
+                  'follower', 'following']
+
+    def get_profile_img(self, obj):
+        profile = obj.profile
+        return profile.thumbnail_img_url
+
+    def get_profile_introduce(self, obj):
+        profile = obj.profile
+        if profile.introduce:
+            return profile.introduce
+        return ''
+
+    def get_review_score(self, obj):
+        return 4
+
+    def get_follower(self, obj):
+        follower = Follow.objects.filter(_to=obj, is_follow=True)
+        return follower.count()
+
+    def get_following(self, obj):
+        following = Follow.objects.filter(_from=obj, is_follow=True, tag__isnull=True)
+        return following.count()
+
+
+class StoreLikeSerializer(serializers.ModelSerializer):
+    thumbnail = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Like
+        fields = ['thumbnail', 'id']
+
+    def get_thumbnail(self, obj):
+        if obj.product:
+            thumbnail = obj.product.prodthumbnail_set.first()
+            if thumbnail:
+                return thumbnail.url
+            return "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"
+        return None
+
+    def get_id(self, obj):
+        if obj.product:
+            return obj.product.id
+        return None
