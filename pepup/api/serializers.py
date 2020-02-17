@@ -101,10 +101,11 @@ class FollowSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
     thumbnails = serializers.SerializerMethodField()
-    tag = serializers.StringRelatedField(many=True)
+    tag = TagSerializer(many=True)
     by = serializers.SerializerMethodField()
     discount_price = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
+    second_category = SecondCategorySerializer(allow_null=True)
 
     class Meta:
         model = Product
