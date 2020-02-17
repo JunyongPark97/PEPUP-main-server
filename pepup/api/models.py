@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-
+import math
 
 # Create your models here.
 class Brand(models.Model):
@@ -96,7 +96,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='수정일')
     sold = models.BooleanField(default=False, verbose_name='판매완료')
-    on_discount = models.BooleanField(default=False,verbose_name='세일중')
+    on_discount = models.BooleanField(default=False, verbose_name='세일중')
     discount_rate = models.FloatField(default=0, verbose_name='할인율')
     first_category = models.ForeignKey(FirstCategory, on_delete=models.CASCADE, null=True)
     second_category = models.ForeignKey(SecondCategory, on_delete=models.CASCADE, null=True)
@@ -108,19 +108,13 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['-id']
+
     def __str__(self):
         return self.name
 
-    def get_cat_list(self):
-        k = self.category  # for now ignore this instance method
-
-        breadcrumb = ["dummy"]
-        while k is not None:
-            breadcrumb.append(k.slug)
-            k = k.parent
-        for i in range(len(breadcrumb) - 1):
-            breadcrumb[i] = '/'.join(breadcrumb[-1:i - 1:-1])
-        return breadcrumb[-1:0:-1]
+    @property
+    def discounted_price(self):
+        return math.ceil(self.price * (1 - self.discount_rate),)
 
 
 

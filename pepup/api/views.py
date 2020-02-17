@@ -3,12 +3,11 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import authentication, permissions
+from rest_framework import authentication
 from rest_framework.decorators import authentication_classes, action
 from rest_framework import status, viewsets, generics
-from rest_framework.authtoken.models import Token
-from rest_framework import mixins
-from rest_framework import pagination
+from rest_framework import exceptions
+
 from django.db.models import F, Sum, Q, Value as V, Count, Subquery
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -134,7 +133,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         except Product.DoesNotExist:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
         try:
-            like = Like.objects.get(user=user, product=product,is_liked=False)
+            like = Like.objects.get(user=user, product=product)
             is_liked = like.is_liked
         except Like.DoesNotExist:
             is_liked = False
@@ -148,7 +147,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         delivery_policy = DeliveryPolicySerializer(product.seller.delivery_policy)
 
         related_products = self.get_related_products(product)
-        print(related_products)
         if related_products:
             related_products = RelatedProductSerializer(related_products, many=True).data
         else:
@@ -159,12 +157,6 @@ class ProductViewSet(viewsets.GenericViewSet):
             'liked': is_liked,
             'delivery_policy': delivery_policy.data,
             'related_products': related_products
-            # 'seller': {
-            #     'id': product.seller.id,
-            #     'reviews': 0,
-            #     'sold': len(sold_products),
-            #     'follower': len(follower),
-            # },
         })
 
     # TODO : filter by second category
@@ -368,6 +360,7 @@ class FollowViewSet(viewsets.GenericViewSet):
 class TradeViewSet(viewsets.GenericViewSet):
     queryset = Trade.objects.all()
     serializer_class = TradeSerializer
+    permission_classes = [IsAuthenticated]
 
     @action(methods=['get'], detail=True)
     def bagging(self, request, pk):
@@ -378,13 +371,16 @@ class TradeViewSet(viewsets.GenericViewSet):
         :return:
         """
         buyer = request.user
-        product = get_object_or_404(Product,pk=pk)
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            raise exceptions.NotFound()
         Trade.objects.get_or_create(
             product=product,
             seller=product.seller,
             buyer=buyer,
         )
-        return Response(status=status.HTTP_200_OK)
+        return Response({'detail': 'bagging success'},status=status.HTTP_200_OK)
 
     def groupbyseller(self, dict_ls):
         ret_ls = []
@@ -400,17 +396,21 @@ class TradeViewSet(viewsets.GenericViewSet):
 
     # todo: code, status and serializer data
     # todo: query duplicate fix
-    @action(methods=['get'], detail=False)
+    @action(methods=['get'], detail=False,)
     def cart(self, request):
         """
         method: GET
         :param request:
         :return: code, status, and serializer data(trades)
         """
-        if request.user.is_anonymous:
-            return Response({'status': '로그인이 되지 않았습니다.'},status=status.HTTP_401_UNAUTHORIZED)
         self.buyer = request.user
-        self.trades = Trade.objects.filter(buyer=self.buyer)
+        self.trades = Trade.objects\
+            .select_related('seller', 'seller__profile')\
+            .select_related('product', 'product__size', 'product__size__category', 'product__brand', 'product__second_category')\
+            .prefetch_related('product__prodthumbnail_set__product')\
+            .filter(buyer=self.buyer, status=1)
+        if self.trades.filter(product__sold=True):
+            self.trades.filter(product__sold=True).delete()
         serializer = TradeSerializer(self.trades, many=True)
         return Response(self.groupbyseller(serializer.data))
 

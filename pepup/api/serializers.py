@@ -7,7 +7,7 @@ from .models import (Product, Brand, Payment,
                      Like, Follow, Deal, Tag, SecondCategory)
 from accounts.models import User, DeliveryPolicy
 
-from accounts.serializers import UserSerializer
+from accounts.serializers import UserSerializer,ThumbnailSerializer
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -113,15 +113,6 @@ class FollowSerializer(serializers.ModelSerializer):
             return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
         return ProdThumbnailSerializer(thumbnails, many=True).data
 
-
-    def get_category(self, obj):
-        k = obj.category
-        rtn = []
-        while k is not None:
-            rtn.insert(0, k.name)
-            k = k.parent
-        return rtn
-
     def get_by(self, obj):
         print(self.context)
         if obj.id in self.context.get('by_seller'):
@@ -159,14 +150,54 @@ class MainSerializer(serializers.ModelSerializer):
         return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
 
 
+class SellerForTradeSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+
+    def get_profile(self, obj):
+        try:
+            return ThumbnailSerializer(obj.profile).data
+        except:
+             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+
+    class Meta:
+        model = User
+        fields = ['id', 'nickname', 'profile']
+
+
+class ProductForTradeSerializer(serializers.ModelSerializer):
+    brand = BrandSerializer(read_only=True)
+    thumbnails = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+    second_category = SecondCategorySerializer(allow_null=True)
+    discounted_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id','name','price', 'discount_rate','discounted_price','brand', 'thumbnails', 'size', 'second_category']
+
+    def get_thumbnails(self, obj):
+        thumbnails = obj.prodthumbnail_set.all()
+        if not thumbnails:
+            return [{"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
+        return ProdThumbnailSerializer(thumbnails, many=True).data
+
+    def get_size(self, obj):
+        if obj.size.size_max:
+            return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
+        if obj.size.category.name == 'SHOES':
+            return "{}(cm)".format(obj.size.size)
+        return "{}({})".format(obj.size.size_name, obj.size.size)
+
+    def get_discounted_price(self,obj):
+        return obj.discounted_price
+
 class TradeSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    seller = UserSerializer()
-    buyer = serializers.StringRelatedField(read_only=True)
+    product = ProductForTradeSerializer(read_only=True)
+    seller = SellerForTradeSerializer()
 
     class Meta:
         model = Trade
-        fields = ('id','product', 'seller', 'buyer')
+        fields = ('id', 'product', 'seller')
 
 
 class FilterSerializer(serializers.Serializer):
