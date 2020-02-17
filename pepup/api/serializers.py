@@ -70,6 +70,7 @@ class RelatedProductSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
+    discounted_price = serializers.SerializerMethodField()
     thumbnails = serializers.SerializerMethodField()
     size = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
@@ -91,6 +92,9 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.size.category.name == 'SHOES':
             return "{}(cm)".format(obj.size.size)
         return "{}({})".format(obj.size.size_name, obj.size.size)
+
+    def get_discounted_price(self,obj):
+        return obj.discounted_price
 
 
 class FollowSerializer(serializers.ModelSerializer):

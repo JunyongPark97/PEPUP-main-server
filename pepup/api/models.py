@@ -114,7 +114,7 @@ class Product(models.Model):
 
     @property
     def discounted_price(self):
-        return math.ceil(self.price * (1 - self.discount_rate),)
+        return math.ceil(self.price * (1 - self.discount_rate)/100) * 100
 
 
 
