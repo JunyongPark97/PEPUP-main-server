@@ -130,7 +130,7 @@ from imagekit.processors import ResizeToFill
 
 
 class ProdThumbnail(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='thumbnails')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     thumbnail = ProcessedImageField(
         upload_to=thumb_directory_path,  # 저장 위치
         processors=[ResizeToFill(350, 350)],  # 사이즈 조정
