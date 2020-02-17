@@ -89,12 +89,11 @@ class RelatedProductSerializer(serializers.ModelSerializer):
             return ProdThumbnailSerializer(thumbnails).data
         return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
 
-
     def get_size(self, obj):
         if hasattr(obj.size, 'size_name'):
             return "{}".format(obj.size.size_name)
         else:
-            return ""
+            return None
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -176,6 +175,7 @@ class FollowSerializer(serializers.ModelSerializer):
     discount_price = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
+    size = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -206,6 +206,15 @@ class FollowSerializer(serializers.ModelSerializer):
             return liked
         except:
             return False
+
+    def get_size(self, obj):
+        if not obj.size:
+            return None
+        if obj.size.size_max:
+            return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
+        if obj.size.category.name == 'SHOES':
+            return "{}(cm)".format(obj.size.size)
+        return "{}({})".format(obj.size.size_name, obj.size.size)
 
 
 class MainSerializer(serializers.ModelSerializer):
@@ -351,12 +360,13 @@ class SearchResultSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
     discount_price = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = ['id', 'images', 'name', 'price',
                   'on_discount', 'discount_rate', 'discount_price', 'size',
-                  'liked', 'is_refundable']
+                  'liked', 'is_refundable', 'size']
 
     def get_images(self, obj):
         images = obj.images.select_related('product').first()
@@ -380,6 +390,11 @@ class SearchResultSerializer(serializers.ModelSerializer):
         except:
             return False
 
+    def get_size(self, obj):
+        if hasattr(obj.size, 'size_name'):
+            return "{}".format(obj.size.size_name)
+        else:
+            return None
 
 class FollowingSerializer(serializers.ModelSerializer):
 
