@@ -57,13 +57,14 @@ def pay_test(request):
 
 class ProductViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
-    serializer_class = ProductSerializer
     pagination_class = HomePagination
     permission_classes = [IsAuthenticated, ]
 
     def get_serializer_class(self):
         serializer = ProductSerializer
-        if self.action == 'create':
+        if self.action == 'list':
+            serializer = MainSerializer
+        elif self.action == 'create':
             serializer = ProductCreateSerializer
         return serializer
 
@@ -73,7 +74,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param request:
         :return:
         """
-        self.serializer_class = MainSerializer
         try:
             products = self.queryset\
                 .select_related('seller__profile')\
@@ -82,12 +82,11 @@ class ProductViewSet(viewsets.GenericViewSet):
                 .prefetch_related('seller__product_set__seller').prefetch_related('prodthumbnail_set').all()
         except Product.DoesNotExist:
             raise Http404
-        page = self.paginate_queryset(products)
-        if page is not None:
-            serializer = self.get_serializer(page,many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = MainSerializer(products, many=True)
-        return Response(serializer.data)
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset=products, request=request)
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def set_prodThumbnail(self, product, request):
         for thum in request.FILES.getlist('thums'):
@@ -129,15 +128,7 @@ class ProductViewSet(viewsets.GenericViewSet):
 
             return Response(status=status.HTTP_201_CREATED)
 
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-
-
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     # TODO : TO BE CHANGE SERVER NAME
     def request_classification(self, images):
@@ -169,10 +160,6 @@ class ProductViewSet(viewsets.GenericViewSet):
     def search(self, request, pk):
         """
         [DEPRECATED] -> SearchViewSet
-        :method: GET
-        :param request:
-        :param pk:
-        :return: code, status, paginated response
         """
         query = q(name__icontains=pk)
         products = Product.objects.filter(query)
