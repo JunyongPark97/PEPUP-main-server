@@ -4,7 +4,7 @@ from django.http import Http404
 from django.conf import settings
 from .models import (Product, Brand, Payment,
                      Trade, ProdThumbnail,
-                     Like, Follow, Deal, Tag, SecondCategory)
+                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision)
 from accounts.models import User, DeliveryPolicy
 
 from accounts.serializers import UserSerializer,ThumbnailSerializer
@@ -40,10 +40,35 @@ class DeliveryPolicySerializer(serializers.ModelSerializer):
         fields = ['general', 'mountain', 'amount', 'volume']
 
 
+class FirstCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FirstCategory
+        fields = ['name', 'id']
+
+
 class SecondCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = SecondCategory
         fields = ['name', 'id']
+
+
+class GenderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GenderDivision
+        fields = ['name', 'id']
+
+
+class SizeSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Size
+        fields = ['id', 'name']
+
+    def get_name(self, obj):
+        if obj.size_max:
+            return "{} ({}-{})".format(obj.size_name, obj.size, obj.size_max)
+        return "{} ({})".format(obj.size_name, obj.size)
 
 
 class RelatedProductSerializer(serializers.ModelSerializer):

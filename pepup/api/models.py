@@ -123,8 +123,13 @@ def img_directory_path(instance, filename):
 
 
 class ProdThumbnail(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='thumbnalis')
     thumbnail = models.FileField(upload_to=img_directory_path)
+
+
+class ProdImage(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='images')
+    image = models.FileField(upload_to=img_directory_path)
 
 
 class Like(models.Model):
