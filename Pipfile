@@ -32,6 +32,8 @@ fcm-django = "*"
 django-debug-toolbar = "*"
 django-ckeditor = "*"
 django-rest-auth = "*"
+pilkit = "*"
+django-imagekit = "*"
 
 [requires]
 python_version = "3.7"

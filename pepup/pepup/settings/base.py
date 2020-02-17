@@ -66,6 +66,9 @@ THIRD_APPS = [
     # 'ckeditor'
     'ckeditor',
     'ckeditor_uploader',
+
+    # django-imagekit
+    'imagekit',
 ]
 
 INSTALLED_APPS += SECONDS_APPS + THIRD_APPS

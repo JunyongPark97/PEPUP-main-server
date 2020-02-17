@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "60de633708fdd8ce5bee0d94a1cb9bc6db74e6df04c72396ec5273f15b52706b"
+            "sha256": "df731a9953f1e09a616dba345b23765931442afd11ff1ec7add25bbc406c9e2c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -106,6 +106,13 @@
             "index": "pypi",
             "version": "==0.41.0"
         },
+        "django-appconf": {
+            "hashes": [
+                "sha256:35f13ca4d567f132b960e2cd4c832c2d03cb6543452d34e29b7ba10371ba80e3",
+                "sha256:c98a7af40062e996b921f5962a1c4f3f0c979fa7885f7be4710cceb90ebe13a6"
+            ],
+            "version": "==1.0.3"
+        },
         "django-ckeditor": {
             "hashes": [
                 "sha256:71c3c7bb46b0cbfb9712ef64af0d2a406eab233f44ecd7c42c24bdfa39ae3bde",
@@ -129,6 +136,14 @@
             ],
             "index": "pypi",
             "version": "==2.2"
+        },
+        "django-imagekit": {
+            "hashes": [
+                "sha256:304c3379f6a5cac387e47ace11195a603ad3cb01e3e951b45489824d25b00359",
+                "sha256:6ec0afb77cdf52cd453c9fc2c10ef350d111edfd6ce53c5977aa8a0e22cee00c"
+            ],
+            "index": "pypi",
+            "version": "==4.0.2"
         },
         "django-js-asset": {
             "hashes": [
@@ -329,6 +344,13 @@
             "index": "pypi",
             "version": "==0.25.3"
         },
+        "pilkit": {
+            "hashes": [
+                "sha256:ddb30c2f0198a147e56b151476c3bb9fe045fbfd5b0a0fa2a3148dba62d1559f"
+            ],
+            "index": "pypi",
+            "version": "==2.0"
+        },
         "pillow": {
             "hashes": [
                 "sha256:047d9473cf68af50ac85f8ee5d5f21a60f849bc17d348da7fc85711287a75031",
@@ -434,10 +456,10 @@
         },
         "ruamel.yaml": {
             "hashes": [
-                "sha256:ee3264b83c3309b4ae7978afa185da6a1d278e3abc9fb942f1a0b57c622092f8",
-                "sha256:fd16843ff0ba45fa5e1ea9ea7038428b4a46f2c39deea9aa67f9eaa34823dc11"
+                "sha256:0962fd7999e064c4865f96fb1e23079075f4a2a14849bcdc5cdba53a24f9759b",
+                "sha256:099c644a778bf72ffa00524f78dd0b6476bca94a1da344130f4bf3381ce5b954"
             ],
-            "version": "==0.16.9"
+            "version": "==0.16.10"
         },
         "ruamel.yaml.clib": {
             "hashes": [
