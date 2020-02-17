@@ -1,13 +1,11 @@
-from rest_framework import serializers
-from rest_framework.authtoken.models import Token
-from django.http import Http404
 from django.conf import settings
-from .models import (Product, Brand, Payment,
-                     Trade, ProdThumbnail,
-                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision)
-from accounts.models import User, DeliveryPolicy
+from django.http import Http404
+from rest_framework import serializers
 
-from accounts.serializers import UserSerializer,ThumbnailSerializer
+from accounts.models import User, DeliveryPolicy
+from accounts.serializers import UserSerializer, ThumbnailSerializer
+from .models import (Product, Brand, Trade, ProdThumbnail,
+                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage)
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -118,8 +116,49 @@ class ProductSerializer(serializers.ModelSerializer):
         return "{}({})".format(obj.size.size_name, obj.size.size)
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProdThumbnail  # TODO : FIX TO ProdImage
+        field = ['thumbnail']
+
+
 class ProductCreateSerializer(serializers.ModelSerializer):
-    pass
+    seller = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'price',
+            'content',
+            'first_category', 'second_category',
+            'size',
+            'brand',
+            'seller'
+        ]
+
+    def create(self, validated_data):
+
+        # Product
+        product_data = validated_data
+        image_data = product_data.pop('images', [])
+
+        product = self.Meta.model.objects.create(**product_data)
+
+        # Images
+        for image in image_data:
+            data = {}
+            data.update({'product': product})
+            data.update({'image': image})
+            ProdImage.objects.create(**data)
+
+        # Thumbnail 은 Product당 하나 생성됨.
+        thumb_data = {'product': product, 'thumbnail': image_data[0]}
+        ProdThumbnail.objects.create(**thumb_data)
+
+        # Done!
+        return product
 
 
 class FollowSerializer(serializers.ModelSerializer):

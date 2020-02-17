@@ -7,7 +7,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import authentication
+from rest_framework import authentication, mixins
 from rest_framework.decorators import authentication_classes, action
 from rest_framework import status, viewsets, generics
 from rest_framework import exceptions
@@ -23,8 +23,8 @@ from django.contrib.auth import logout
 # model
 from accounts.models import User, Profile
 from .models import (Product, ProdThumbnail, Payment,
-                     Brand, Trade,Like,Follow,
-                     Tag, Deal, Delivery)
+                     Brand, Trade, Like, Follow,
+                     Tag, Deal, Delivery, FirstCategory, SecondCategory, Size, GenderDivision)
 
 # serializer
 from .serializers import (
@@ -36,7 +36,8 @@ from .serializers import (
     FollowSerializer,
     PayFormSerializer,
     SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
-    StoreProductSerializer, StoreSerializer, StoreLikeSerializer)
+    StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
+    GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer)
 
 from accounts.serializers import UserSerializer
 
@@ -58,6 +59,13 @@ class ProductViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     pagination_class = HomePagination
+    permission_classes = [IsAuthenticated, ]
+
+    def get_serializer_class(self):
+        serializer = ProductSerializer
+        if self.action == 'create':
+            serializer = ProductCreateSerializer
+        return serializer
 
     def list(self, request):
         """
@@ -95,17 +103,41 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param request:
         :return: code and status
         """
+
         data = request.data.copy()
-        brand = get_object_or_404(Brand, id=int(request.POST['brand_id']))
-        serializer = ProductSerializer(data=request.data)
+
+        if not 'image' in data:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        image_data = data.pop('image')
+
+        if '' in image_data:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        tags = data.pop('tag')
+
+        serializer = self.get_serializer(data=data)
+
         if serializer.is_valid():
-            product = serializer.save(
-                # seller=seller,
-                brand=brand
-            )
-            self.set_prodThumbnail(product, request)
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data = serializer.validated_data
+            data.update({'images': image_data})
+            product = serializer.create(data)
+
+            for tag_value in tags:
+                tag, _ = Tag.objects.get_or_create(tag=tag_value)
+                product.tag.add(tag.id)
+
+            return Response(status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
 
     # TODO : TO BE CHANGE SERVER NAME
     def request_classification(self, images):
@@ -262,6 +294,101 @@ class ProductViewSet(viewsets.GenericViewSet):
 
     def destroy(self, request, pk=None):
         pass
+
+
+class ProductCategoryAPIViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated, ]
+
+    def get_queryset(self):
+        queryset = FirstCategory.objects.filter(is_active=True)
+        if self.action == 'gender':
+            queryset = GenderDivision.objects.filter(is_active=True)
+        elif self.action == 'second_category':
+            queryset = SecondCategory.objects.filter(is_active=True)
+        elif self.action == 'size':
+            queryset = Size.objects.all()
+        elif self.action == 'brand':
+            queryset = Brand.objects.all()
+        return queryset
+
+    def get_serializer_class(self):
+        serializer = FirstCategorySerializer
+        if self.action == 'gender':
+            serializer = GenderSerializer
+        elif self.action == 'second_category':
+            serializer = SecondCategorySerializer
+        elif self.action == 'size':
+            serializer = SizeSerializer
+        elif self.action == 'brand':
+            serializer = BrandSerializer
+        return serializer
+
+    @action(methods=['get'], detail=False,)
+    def gender(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def first_category(self, request, *args, **kwargs):
+        gender_pk = kwargs['pk']
+        try:
+            gender = GenderDivision.objects.get(pk=gender_pk)
+        except GenderDivision.DoesNotExist:
+            raise Http404
+        queryset = self.get_queryset().filter(gender=gender)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def second_category(self, request, *args, **kwargs):
+        fc_pk = kwargs['pk']
+        try:
+            first_category = FirstCategory.objects.get(pk=fc_pk)
+        except FirstCategory.DoesNotExist:
+            raise Http404
+        queryset = self.get_queryset().filter(parent=first_category)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def size(self, request, *args, **kwargs):
+        fc_pk = kwargs['pk']
+        try:
+            first_category = FirstCategory.objects.get(pk=fc_pk)
+        except FirstCategory.DoesNotExist:
+            raise Http404
+        queryset = self.get_queryset().filter(category=first_category)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=False)
+    def brand(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class TagViewSet(viewsets.GenericViewSet):
+    queryset = Tag
+    permission_classes = [IsAuthenticated,]
+
+    @action(methods=['post'], detail=False)
+    def searching(self, request, *args, **kwargs):
+        """
+        tag page 에서 tag 검색을 할 때 각 글자에 해당하는 태그를 조회하는 api 입니다.
+        없는 태그의 경우 create 를 TagViewSet에서 하지 않고 ProductViewSet의 create 에서 생성됩니다.
+        """
+        keyword = request.data['keyword']
+        queryset = Tag.objects.prefetch_related('product_set') \
+                              .filter(tag__icontains=keyword) \
+                              .annotate(product_count=Count('product')) \
+                              .values('tag', 'id') \
+                              .order_by('-product_count')[:15]
+        if not queryset.exists():
+            return None
+        serializer = TagSerializer(queryset)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class FollowViewSet(viewsets.GenericViewSet):
