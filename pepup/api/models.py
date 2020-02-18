@@ -148,7 +148,7 @@ class Like(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     is_liked = models.BooleanField(default=True)
 
-
+from django.db.models.functions import Round
 class Delivery(models.Model):
     STEP0 = 'step0'
     STEP1 = 'step1'
@@ -188,12 +188,15 @@ class Delivery(models.Model):
     ]  # 택배사코드
 
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sender')
-    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='receiver')
-    code = models.TextField(choices=codes, verbose_name='택배사코드')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='receiver')
     address = models.TextField(verbose_name='배송지')
+    memo = models.TextField(default='', verbose_name='배송메모')
+    mountain = models.BooleanField(verbose_name='산간지역유무', default=False)
+
     state = models.TextField(choices=states)
+    code = models.TextField(choices=codes, verbose_name='택배사코드')
     number = models.TextField(verbose_name='운송장번호')
-    mountain = models.BooleanField(verbose_name='산간지역유무')
+
 
 
 class Payment(models.Model):
@@ -211,7 +214,7 @@ class Payment(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
     receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
-    status = models.IntegerField(choices=STATUS, verbose_name='결제상태')
+    status = models.IntegerField(choices=STATUS, verbose_name='결제상태', default=0)
 
     price = models.IntegerField(verbose_name='결제금액')
     name = models.CharField(max_length=100, verbose_name='대표상품명')
@@ -222,7 +225,7 @@ class Payment(models.Model):
     cancelled_tax_free = models.IntegerField(verbose_name='취소면세금액')
     pg = models.TextField(blank=True, null=True, verbose_name='pg사')
     method = models.TextField(verbose_name='결제수단')
-    payment_data = models.TextField('raw데이터')
+    payment_data = models.TextField(verbose_name='raw데이터')
     requested_at = models.DateTimeField(blank=True, null=True)
     purchased_at = models.DateTimeField(blank=True, null=True)
     revoked_at = models.DateTimeField(blank=True, null=True)

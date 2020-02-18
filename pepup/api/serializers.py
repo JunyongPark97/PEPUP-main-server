@@ -340,14 +340,14 @@ class PayFormSerializer(serializers.Serializer):
     user_info = serializers.SerializerMethodField()
     order_id = serializers.SerializerMethodField()
 
-    def get_name(self,obj):
+    def get_name(self, obj):
         return self.context.get('name')
 
-    def get_items(self,obj):
+    def get_items(self, obj):
         items = self.context.get('products')
         return ItemSerializer(items, many=True).data
 
-    def get_user_info(self,obj):
+    def get_user_info(self, obj):
         user_info = self.context.get('user')
         return UserinfoSerializer(user_info).data
 
@@ -484,3 +484,11 @@ class StoreLikeSerializer(serializers.ModelSerializer):
         if obj.product:
             return obj.product.id
         return None
+
+
+class GetPayFormSerializer(serializers.Serializer):
+    trades = serializers.ListField()
+    price = serializers.IntegerField()
+    address = serializers.CharField()
+    memo = serializers.CharField()
+    mountain = serializers.BooleanField()
