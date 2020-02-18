@@ -2,7 +2,7 @@ from django.conf import settings
 from django.http import Http404
 from rest_framework import serializers
 from django.db.models import Avg
-from accounts.models import User, DeliveryPolicy
+from accounts.models import User, DeliveryPolicy, StoreAccount
 from accounts.serializers import UserSerializer, ThumbnailSerializer
 from .models import (Product, Brand, Trade, ProdThumbnail,
                      Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage, Review)
@@ -551,3 +551,24 @@ class ReviewCreateSerializer(serializers.ModelSerializer):
             'deal',
             'thumbnail'
         ]
+
+
+class StoreRegisterSerializer(serializers.ModelSerializer):
+    seller = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = DeliveryPolicy
+        fields = '__all__'
+
+    def create(self, validated_data):
+        request = self.context['request']
+
+        # Product
+        delivery_data = validated_data
+        account_data = delivery_data.pop('account_data', None)
+        account_data.update({'user': request.user})
+        delivery_policy = self.Meta.model.objects.create(**delivery_data)
+        StoreAccount.objects.create(**account_data)
+
+        # Done!
+        return delivery_policy

@@ -21,7 +21,7 @@ from django.db.models import IntegerField, Value, Case, When, Prefetch
 from .loader import load_credential
 from django.contrib.auth import logout
 # model
-from accounts.models import User, Profile
+from accounts.models import User, Profile, StoreAccount
 from .models import (Product, ProdThumbnail, Payment,
                      Brand, Trade, Like, Follow,
                      Tag, Deal, Delivery, FirstCategory, SecondCategory, Size, GenderDivision)
@@ -39,7 +39,7 @@ from .serializers import (
     SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
     StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
     GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer,
-    SimpleProfileSerializer, StoreReviewSerializer)
+    SimpleProfileSerializer, StoreReviewSerializer, StoreRegisterSerializer)
 
 from accounts.serializers import UserSerializer
 
@@ -1093,4 +1093,40 @@ class ReviewViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
             return Response(status=status.HTTP_201_CREATED)
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class StoreRegisterViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
+    permission_classes = [IsAuthenticated, ]
+    serializer_class = StoreRegisterSerializer
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        user = request.user
+
+        if hasattr(user, 'delivery_policy'):
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        data = request.data.copy()
+        account_data = {}
+        bank = data.pop('bank', None)
+        account = data.pop('account', None)
+        account_holder = data.pop('account_holder', None)
+        serializer = self.get_serializer(data=data)
+
+        if serializer.is_valid():
+            data = serializer.validated_data
+            account_data.update({'bank': bank})
+            account_data.update({'account': account})
+            account_data.update({'account_holder': account_holder})
+            data.update({'account_data': account_data})
+
+            # Done!
+            serializer.create(data)
+
+            return Response(status=status.HTTP_201_CREATED)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+
 

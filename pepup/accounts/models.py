@@ -127,3 +127,37 @@ class WalletLog(models.Model):
     Deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class StoreAccount(models.Model):
+    BANK = [
+        (1, '신한'),
+        (2, 'KB국민'),
+        (3, '우리'),
+        (4, '기업'),
+        (5, 'SC제일'),
+        (6, '농협'),
+        (7, '하나'),
+        (8, '외환(하나)'),
+        (9, '카카오뱅크'),
+        (10, '산업'),
+        (11, '씨티'),
+        (12, '케이뱅크'),
+        (13, '우체국'),
+        (14, '새마을'),
+        (15, '수협'),
+        (16, '신협'),
+        (17, '광주'),
+        (18, '전북'),
+        (19, '부산'),
+        (20, '대구'),
+        (21, '경남'),
+        (22, 'HSBC'),
+        (23, 'JP모간'),
+        (24, 'BOA'),
+    ]
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='account')
+    bank = models.IntegerField(choices=BANK)
+    account = models.IntegerField()
+    account_holder = models.CharField(max_length=30)
