@@ -21,10 +21,10 @@ from django.db.models import IntegerField, Value, Case, When, Prefetch
 from .loader import load_credential
 from django.contrib.auth import logout
 # model
-from accounts.models import User, Profile, StoreAccount
+from accounts.models import User, Profile, StoreAccount, DeliveryPolicy
 from .models import (Product, ProdThumbnail, Payment,
                      Brand, Trade, Like, Follow,
-                     Tag, Deal, Delivery, FirstCategory, SecondCategory, Size, GenderDivision)
+                     Tag, Deal, Delivery, FirstCategory, SecondCategory, Size, GenderDivision, ProdImage)
 
 
 # serializer
@@ -39,7 +39,7 @@ from .serializers import (
     SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
     StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
     GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer,
-    SimpleProfileSerializer, StoreReviewSerializer, StoreRegisterSerializer)
+    SimpleProfileSerializer, StoreReviewSerializer, DeliveryPolicyWriteSerializer)
 
 from accounts.serializers import UserSerializer
 
@@ -58,7 +58,7 @@ def pay_test(request):
 
 
 class ProductViewSet(viewsets.GenericViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.filter(is_active=True)
     pagination_class = HomePagination
     permission_classes = [IsAuthenticated, ]
     serializer_class = ProductSerializer
@@ -66,7 +66,7 @@ class ProductViewSet(viewsets.GenericViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             serializer = MainSerializer
-        elif self.action == 'create':
+        elif self.action == 'create' or 'update':
             serializer = ProductCreateSerializer
         elif self.action == 'retrieve':
             serializer = ProductSerializer
@@ -81,7 +81,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         :return:
         """
         try:
-            products = self.queryset\
+            products = self.get_queryset()\
                 .select_related('seller__profile')\
                 .prefetch_related('seller___to') \
                 .prefetch_related(Prefetch('seller__product_set', queryset=self.queryset.filter(sold=True)))\
@@ -104,9 +104,10 @@ class ProductViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     def create(self, request):
         """
-        :method: POST
-        :param request:
-        :return: code and status
+        Product 생성하는 api 입니다.
+        [Image, tag, name, price, content, size,
+        first_category, second_category, brand] 를 받아 생성하며
+        Image, tag 는 따로 생성합니다.
         """
         user = request.user
         if not hasattr(user, 'delivery_policy'):
@@ -131,39 +132,109 @@ class ProductViewSet(viewsets.GenericViewSet):
             data.update({'images': image_data})
             product = serializer.create(data)
 
+            # tag relation
             for tag_value in tags:
                 tag, _ = Tag.objects.get_or_create(tag=tag_value)
                 product.tag.add(tag.id)
 
-            return Response(status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @transaction.atomic
+    def update(self, request, pk=None):
+        """
+        Product 업데이트 api 입니다.
+        먼저 user가 권한이 있는지(작성자) 확인합니다.
+        image는 한장 이상이어야 합니다.
+        """
+        data = request.data.copy()
+
+        if not 'image' in data:
+            return Response({"message": "사진을 한장 이상 첨부해야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if '' in data['image']:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        instance = self.get_object()
+        user = request.user
+
+        if instance.seller.id != user.id:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+        image_data = data.pop('image')
+
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        product = serializer.save()
+
+        # remove prod images
+        product.images.all().delete()
+
+        # remove prod thumbnail image
+        product.prodthumbnail_set.all().delete()
+
+        # Images re-create
+        for image in image_data:
+            ProdImage.objects.create(product=product, image= image)
+
+        # Thumbnail re-create
+        thumbnail = image_data[0]
+        ProdThumbnail.objects.update_or_create(product=product, thumbnail=thumbnail)
+
+        # if tag changed , tag update
+        if 'tag' in data:
+            tags = data.pop('tag')
+
+            # tag remove
+            exist_tags = product.tag.all()
+            for exist_tag in exist_tags:
+                product.tag.remove(exist_tag)
+
+            # tag update
+            for tag_value in tags:
+                tag, _ = Tag.objects.get_or_create(tag=tag_value)
+                product.tag.add(tag)
+
+        return Response(serializer.data, status=status.HTTP_206_PARTIAL_CONTENT)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Product 를 삭제하지 않고 is_active=False 로 변환합니다.
+        """
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(methods=['put'], detail=True)
+    def sold(self, request, *args, **kwargs):
+        """
+        Product 작성자가 sold 처리 or 복구시 호출하는 api 입니다.
+        sold 를 반전하여 return 합니다.
+        """
+        instance = self.get_object()
+        user = request.user
+        if instance.seller.id != user.id:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        sold = instance.sold
+        if sold:
+            instance.sold = False
+        else:
+            instance.sold = True
+        instance.save()
+        return Response({'sold': instance.sold}, status=status.HTTP_206_PARTIAL_CONTENT)
 
     # TODO : TO BE CHANGE SERVER NAME
     def request_classification(self, images):
         server_url = ""
-        request_options = [
-            {
-                'version': 1,
-                'use_cache': True,
-            }
-        ]
-
-        data = {
-            'image_url': images,
-            'requests': request_options,
-        }
-
+        request_options = [{'version': 1, 'use_cache': True}]
+        data = {'image_url': images, 'requests': request_options}
         try:
-            result = json.loads(requests.post(  # Request / Post method
-                server_url,
-                json=data).text)
-
+            result = json.loads(requests.post(server_url, json=data).text)
         except:
             result = None
-
         return result[0]
-
 
     @action(methods=['get'], detail=True)
     def search(self, request, pk):
@@ -188,10 +259,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         :return:
         """
         user = request.user
-        try:
-            product = Product.objects.get(pk=pk)
-        except Product.DoesNotExist:
-            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        product = self.get_object()
         try:
             like = Like.objects.get(user=user, product=product)
             is_liked = like.is_liked
@@ -204,6 +272,10 @@ class ProductViewSet(viewsets.GenericViewSet):
             bagged = False
 
         serializer = ProductSerializer(product)
+
+        if not hasattr(product.seller, 'delivery_policy'):
+            return Response({"message: User has no Delivery_policy"}, status=status.HTTP_404_NOT_FOUND)
+
         delivery_policy = DeliveryPolicySerializer(product.seller.delivery_policy)
 
         related_products = self.get_related_products(product)
@@ -223,7 +295,7 @@ class ProductViewSet(viewsets.GenericViewSet):
     def get_related_products(self, product):
         second_category = product.second_category
         tags = product.tag.all()
-        filtered_products = Product.objects\
+        filtered_products = self.get_queryset()\
             .select_related('size','size__category','size__category__gender')\
             .prefetch_related('tag').\
             exclude(id=product.id).\
@@ -237,7 +309,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         ).distinct().order_by('-count')[:5]
 
         return filtered_products
-
 
     # todo: response fix -> code and status
     @action(methods=['post'], detail=True, serializer_class=LikeSerializer)
@@ -281,15 +352,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         except Like.DoesNotExist:
             return Response({'results': {'is_liked': False}}, status=status.HTTP_200_OK)
         return Response({'results': self.get_serializer(like).data}, status.HTTP_200_OK)
-
-    def update(self, request, pk=None):
-        pass
-
-    def partial_update(self, request, pk=None):
-        pass
-
-    def destroy(self, request, pk=None):
-        pass
 
 
 class ProductCategoryAPIViewSet(viewsets.GenericViewSet):
@@ -909,9 +971,7 @@ class SearchViewSet(viewsets.GenericViewSet):
     @action(methods=['post'],detail=False)
     def searching(self, request):
         """
-        :methods: POST
-        :param request:
-        :return:
+        검색 시 한 글자마다 자동완성 해 주는 api
         """
         keyword = request.data['keyword']
         if len(keyword) < 1:
@@ -928,8 +988,7 @@ class SearchViewSet(viewsets.GenericViewSet):
     @action(methods=['post'], detail=False)
     def product_search(self, request):
         """
-        product name 이 포함된 products 상품을 return 합니다.
-        :method: POST
+        [POST] product name 이 포함된 products 상품을 return 합니다.
         :param request: keyword (string) 검색 하는 값
         :return: paginated data, status
         """
@@ -950,8 +1009,6 @@ class SearchViewSet(viewsets.GenericViewSet):
     def tag_search(self, request, pk):
         """
         searching api 에서 주어졌던 tag_id 기반으로 상품을 return 합니다.
-        :method: GET
-        :param request:
         :return: paginated data, tag_followed: bool, status
         """
         # get user
@@ -1013,7 +1070,9 @@ class StoreViewSet(viewsets.GenericViewSet):
 
     @action(methods=['get'], detail=True)
     def shop(self, request, *args, **kwargs):
-
+        """
+        Store main retrieve api
+        """
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
 
         if not retrieve_user:
@@ -1031,7 +1090,9 @@ class StoreViewSet(viewsets.GenericViewSet):
 
     @action(methods=['get'], detail=True)
     def like(self, request, *args, **kwargs):
-
+        """
+        Store's like retrieve api
+        """
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
         if not retrieve_user:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
@@ -1049,7 +1110,9 @@ class StoreViewSet(viewsets.GenericViewSet):
 
     @action(methods=['get'], detail=True)
     def review(self, request, *args, **kwargs):
-
+        """
+        Store's review retrieve api
+        """
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
 
         if not retrieve_user:
@@ -1083,6 +1146,10 @@ class ReviewViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
+        """
+        Deal 별로 생성되는 review create
+        생성된 리뷰는 수정 및 삭제가 불가능 함.
+        """
         data = request.data.copy()
         serializer = self.get_serializer(data=data)
         if serializer.is_valid():
@@ -1095,12 +1162,19 @@ class ReviewViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class StoreRegisterViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
+class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
+                            mixins.UpdateModelMixin, mixins.RetrieveModelMixin):
     permission_classes = [IsAuthenticated, ]
-    serializer_class = StoreRegisterSerializer
+    serializer_class = DeliveryPolicyWriteSerializer
+    queryset = DeliveryPolicy.objects.all()
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
+        """
+        Sell 버튼을 눌렀을 때 처음으로 호출되는 api
+        StoreAccount 모델과 동시에 생성됩니다.
+        :param request: bank(int), account(int), account_holder(String), general(int), mountain(int)
+        """
         user = request.user
 
         if hasattr(user, 'delivery_policy'):
@@ -1127,6 +1201,18 @@ class StoreRegisterViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+    def update(self, request, *args, **kwargs):
+        """
+        update : 배송비수정 & 배송정책수정
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_206_PARTIAL_CONTENT)
 
-
-
+    def retrieve(self, request, *args, **kwargs):
+        """
+        retrieve
+        """
+        return super(DeliveryPolicyViewSet, self).retrieve(request, *args, **kwargs)

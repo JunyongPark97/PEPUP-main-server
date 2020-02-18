@@ -57,9 +57,14 @@ class SecondCategorySerializer(serializers.ModelSerializer):
 
 
 class GenderSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
     class Meta:
         model = GenderDivision
         fields = ['name', 'id']
+
+    def get_name(self, obj):
+        return obj.get_name_display()
 
 
 class SizeSerializer(serializers.ModelSerializer):
@@ -553,7 +558,7 @@ class ReviewCreateSerializer(serializers.ModelSerializer):
         ]
 
 
-class StoreRegisterSerializer(serializers.ModelSerializer):
+class DeliveryPolicyWriteSerializer(serializers.ModelSerializer):
     seller = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
@@ -568,6 +573,8 @@ class StoreRegisterSerializer(serializers.ModelSerializer):
         account_data = delivery_data.pop('account_data', None)
         account_data.update({'user': request.user})
         delivery_policy = self.Meta.model.objects.create(**delivery_data)
+
+        # store account
         StoreAccount.objects.create(**account_data)
 
         # Done!

@@ -106,6 +106,7 @@ class Product(models.Model):
     second_category = models.ForeignKey(SecondCategory, on_delete=models.CASCADE, null=True)
     is_refundable = models.BooleanField(default=False)
     tag = models.ManyToManyField(Tag)
+    is_active = models.BooleanField(default=True)
 
     # todo:
     # 환불가능, 사이즈(카테고리화: 남자->XL),
