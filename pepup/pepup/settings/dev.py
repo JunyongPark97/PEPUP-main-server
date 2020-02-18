@@ -55,7 +55,9 @@ STATICFILES_STORAGE = 'pepup.storage.StaticStorage'
 
 MEDIA_LOCATION = 'media'
 MEDIA_URL = "https://%s/%s/" % (AWS_S3_HOST,MEDIA_LOCATION)
-DEFAULT_FILE_STORAGE = 'pepup.storage.MediaStorage'
+
+# TODO : ADD in prod.py
+DEFAULT_FILE_STORAGE = 'pepup.storage.CustomS3Boto3Storage'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/

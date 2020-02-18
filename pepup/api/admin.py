@@ -1,6 +1,8 @@
 from django.contrib import admin
+from django.utils.safestring import mark_safe
+
 from .models import Brand, Product, Trade, ProdThumbnail, Like, Tag, Follow, GenderDivision, FirstCategory, \
-    SecondCategory, Size
+    SecondCategory, Size, ProdImage
 
 
 # Register your models here.
@@ -44,10 +46,27 @@ class SizeAdmin(admin.ModelAdmin):
         return "[{}] {}".format(obj.category.name, obj.size)
 
 
+class ProdThumbnailAdmin(admin.ModelAdmin):
+    list_display = ['product', 'product_id', 'thumbnails', 'pk']
+
+    def thumbnails(self, obj):
+        if obj.thumbnail:
+            return mark_safe('<img src="%s" width=120px "/>' % obj.thumbnail.url)
+
+
+class ProdImageAdmin(admin.ModelAdmin):
+    list_display = ['product', 'product_id', 'images', 'pk']
+
+    def images(self, obj):
+        if obj.image:
+            return mark_safe('<img src="%s" width=120px "/>' % obj.image.url)
+
+
 admin.site.register(Brand)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Trade, TradeAdmin)
-admin.site.register(ProdThumbnail)
+admin.site.register(ProdThumbnail, ProdThumbnailAdmin)
+admin.site.register(ProdImage, ProdImageAdmin)
 admin.site.register(Like)
 admin.site.register(Tag)
 admin.site.register(Follow, FollowAdmin)

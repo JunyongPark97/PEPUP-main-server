@@ -88,7 +88,7 @@ class Profile(models.Model):
         """
         if self.thumbnail_img.name != "default_profile.png":
             return self.thumbnail_img.url
-        elif hasattr(self.user, 'socialaccount_set'):
+        elif hasattr(self.user.socialaccount_set.last(), 'extra_data'):
             if 'properties' in self.user.socialaccount_set.last().extra_data:
                 return self.user.socialaccount_set.last().extra_data['properties'].get('thumbnail')
         else:

@@ -2,6 +2,10 @@ from django.db import models
 from django.conf import settings
 import math
 
+from imagekit.models import ProcessedImageField
+from imagekit.processors import ResizeToFill
+
+
 # Create your models here.
 class Brand(models.Model):
     name = models.CharField(max_length=100, verbose_name='브랜드명')
@@ -117,19 +121,31 @@ class Product(models.Model):
         return math.ceil(self.price * (1 - self.discount_rate)/100) * 100
 
 
-
 def img_directory_path(instance, filename):
-    return 'user/{}/products/{}'.format(instance.product.seller.email,filename)
+    return 'user/{}/products/{}'.format(instance.product.seller.email, filename)
+
+
+def thumb_directory_path(instance, filename):
+    return 'user/{}/products/thumbnail_{}'.format(instance.product.seller.email, filename)
 
 
 class ProdThumbnail(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    thumbnail = models.FileField(upload_to=img_directory_path)
+    thumbnail = ProcessedImageField(
+        upload_to=thumb_directory_path,  # 저장 위치
+        processors=[ResizeToFill(350, 350)],  # 사이즈 조정
+        format='JPEG',  # 최종 저장 포맷
+        options={'quality': 90})
+
+
+class ProdImage(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='images')
+    image = models.FileField(upload_to=img_directory_path)
 
 
 class Like(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,related_name='liker',on_delete=models.CASCADE)
-    product = models.ForeignKey(Product,on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='liker', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     is_liked = models.BooleanField(default=True)
 
 
@@ -169,10 +185,10 @@ class Delivery(models.Model):
         ('70', 'LOTOS CORPORATION'), ('71', 'IK물류'), ('72', '성훈물류'), ('73', 'CR로지텍'),
         ('74', '용마로지스'), ('75', '원더스퀵'), ('76', '대ress'), ('78', '2FastExpress'),
         ('99', '롯데택배 해외특송')
-    ]   # 택배사코드
+    ]  # 택배사코드
 
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sender')
-    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='receiver')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='receiver')
     code = models.TextField(choices=codes, verbose_name='택배사코드')
     address = models.TextField(verbose_name='배송지')
     state = models.TextField(choices=states)
@@ -182,15 +198,15 @@ class Delivery(models.Model):
 
 class Payment(models.Model):
     STATUS = [
-        (0,'결제대기'),
-        (1,'결제완료'),
-        (2,'결제승인전'),
-        (3,'결제승인중'),
-        (20,'결제취소'),
-        (-20,'결제취소실패'),
-        (-30,'결제취소진행중'),
-        (-1,'오류로 인한 결제실패'),
-        (-2,'결제승인실패')
+        (0, '결제대기'),
+        (1, '결제완료'),
+        (2, '결제승인전'),
+        (3, '결제승인중'),
+        (20, '결제취소'),
+        (-20, '결제취소실패'),
+        (-30, '결제취소진행중'),
+        (-1, '오류로 인한 결제실패'),
+        (-2, '결제승인실패')
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
@@ -204,32 +220,32 @@ class Payment(models.Model):
     remain_tax_free = models.IntegerField(verbose_name='남은면세금액')
     cancelled_price = models.IntegerField(verbose_name='취소금액')
     cancelled_tax_free = models.IntegerField(verbose_name='취소면세금액')
-    pg = models.TextField(blank=True, null=True,verbose_name='pg사')
+    pg = models.TextField(blank=True, null=True, verbose_name='pg사')
     method = models.TextField(verbose_name='결제수단')
     payment_data = models.TextField('raw데이터')
-    requested_at = models.DateTimeField(blank=True,null=True)
-    purchased_at = models.DateTimeField(blank=True,null=True)
-    revoked_at = models.DateTimeField(blank=True,null=True)
+    requested_at = models.DateTimeField(blank=True, null=True)
+    purchased_at = models.DateTimeField(blank=True, null=True)
+    revoked_at = models.DateTimeField(blank=True, null=True)
 
 
-class Deal(models.Model): #돈 관련 (스토어 별로)
+class Deal(models.Model):  # 돈 관련 (스토어 별로)
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
-    payment = models.ForeignKey(Payment,on_delete=models.CASCADE)
+    payment = models.ForeignKey(Payment, null=True, on_delete=models.CASCADE)
     total = models.IntegerField(verbose_name='결제금액')
-    remain = models.IntegerField(verbose_name='잔여금') # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
+    remain = models.IntegerField(verbose_name='잔여금')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
     delivery_charge = models.IntegerField(verbose_name='배송비')
-    delivery = models.OneToOneField(Delivery,on_delete=models.CASCADE)
+    delivery = models.OneToOneField(Delivery, on_delete=models.CASCADE)
 
 
-class Trade(models.Model): #카트, 상품 하나하나당 아이디 1개씩
+class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
     STATUS = [
         (1, '결제전'),
-        (2, '결제완료'), # = 배송전 , noti 날려주기.
+        (2, '결제완료'),  # = 배송전 , noti 날려주기.
         (3, '배송중'),
         (4, '배송완료'),
-        (5, '거래완료'), # 셀러한테 noti 날려주기. // 리뷰남겼을떄, 운송장 번호 5일 후 (자동구매확정)
-        (6, '정산완료'), # admin 필요
+        (5, '거래완료'),  # 셀러한테 noti 날려주기. // 리뷰남겼을떄, 운송장 번호 5일 후 (자동구매확정)
+        (6, '정산완료'),  # admin 필요
         (-1, '환불신청'),
         (-2, '환불승인'),
         (-3, '환불완료'),
@@ -258,14 +274,16 @@ class TradeLog(models.Model):
         (-20, '환불반려'),
     ]
 
-    trade = models.ForeignKey(Trade,on_delete=models.CASCADE)
+    trade = models.ForeignKey(Trade, on_delete=models.CASCADE)
     log = models.TextField()
     status = models.IntegerField(choices=STATUS)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Follow(models.Model):
-    _from = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_from', on_delete=models.CASCADE)
-    _to = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_to', on_delete=models.CASCADE)
+    _from = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_from',
+                              on_delete=models.CASCADE)
+    _to = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_to',
+                            on_delete=models.CASCADE)
     tag = models.ForeignKey(Tag, blank=True, null=True, on_delete=models.CASCADE)
     is_follow = models.BooleanField(default=True)

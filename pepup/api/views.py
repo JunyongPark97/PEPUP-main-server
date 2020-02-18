@@ -1,9 +1,13 @@
+import json
+
+import requests
+from django.db import transaction
 from django.db.models.functions import Coalesce
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import authentication
+from rest_framework import authentication, mixins
 from rest_framework.decorators import authentication_classes, action
 from rest_framework import status, viewsets, generics
 from rest_framework import exceptions
@@ -19,8 +23,8 @@ from django.contrib.auth import logout
 # model
 from accounts.models import User, Profile
 from .models import (Product, ProdThumbnail, Payment,
-                     Brand, Trade,Like,Follow,
-                     Tag, Deal, Delivery)
+                     Brand, Trade, Like, Follow,
+                     Tag, Deal, Delivery, FirstCategory, SecondCategory, Size, GenderDivision)
 
 # serializer
 from .serializers import (
@@ -31,12 +35,14 @@ from .serializers import (
     LikeSerializer,
     FollowSerializer,
     PayFormSerializer,
-    SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer,FollowingSerializer)
+    SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
+    StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
+    GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer)
 
 from accounts.serializers import UserSerializer
 
 from api.pagination import FollowPagination, HomePagination, ProductSearchResultPagination, \
-    TagSearchResultPagination
+    TagSearchResultPagination, StorePagination
 
 # bootpay
 from .Bootpay import BootpayApi
@@ -51,8 +57,16 @@ def pay_test(request):
 
 class ProductViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
-    serializer_class = ProductSerializer
     pagination_class = HomePagination
+    permission_classes = [IsAuthenticated, ]
+
+    def get_serializer_class(self):
+        serializer = ProductSerializer
+        if self.action == 'list':
+            serializer = MainSerializer
+        elif self.action == 'create':
+            serializer = ProductCreateSerializer
+        return serializer
 
     def list(self, request):
         """
@@ -60,7 +74,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param request:
         :return:
         """
-        self.serializer_class = MainSerializer
         try:
             products = self.queryset\
                 .select_related('seller__profile')\
@@ -69,12 +82,11 @@ class ProductViewSet(viewsets.GenericViewSet):
                 .prefetch_related('seller__product_set__seller').prefetch_related('prodthumbnail_set').all()
         except Product.DoesNotExist:
             raise Http404
-        page = self.paginate_queryset(products)
-        if page is not None:
-            serializer = self.get_serializer(page,many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = MainSerializer(products, many=True)
-        return Response(serializer.data)
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset=products, request=request)
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def set_prodThumbnail(self, product, request):
         for thum in request.FILES.getlist('thums'):
@@ -83,32 +95,71 @@ class ProductViewSet(viewsets.GenericViewSet):
                 thumbnail=thum
             )
 
+    @transaction.atomic
     def create(self, request):
         """
         :method: POST
         :param request:
         :return: code and status
         """
-        seller = get_user(request)
-        brand = get_object_or_404(Brand, id=int(request.POST['brand_id']))
-        serializer = ProductSerializer(data=request.data,partial=True)
+
+        data = request.data.copy()
+
+        if not 'image' in data:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        image_data = data.pop('image')
+
+        if '' in image_data:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        tags = data.pop('tag')
+
+        serializer = self.get_serializer(data=data)
+
         if serializer.is_valid():
-            product = serializer.save(
-                seller=seller,
-                brand=brand
-            )
-            self.set_prodThumbnail(product, request)
-            return Response(serializer.data)
+            data = serializer.validated_data
+            data.update({'images': image_data})
+            product = serializer.create(data)
+
+            for tag_value in tags:
+                tag, _ = Tag.objects.get_or_create(tag=tag_value)
+                product.tag.add(tag.id)
+
+            return Response(status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # TODO : TO BE CHANGE SERVER NAME
+    def request_classification(self, images):
+        server_url = ""
+        request_options = [
+            {
+                'version': 1,
+                'use_cache': True,
+            }
+        ]
+
+        data = {
+            'image_url': images,
+            'requests': request_options,
+        }
+
+        try:
+            result = json.loads(requests.post(  # Request / Post method
+                server_url,
+                json=data).text)
+
+        except:
+            result = None
+
+        return result[0]
+
 
     @action(methods=['get'], detail=True)
     def search(self, request, pk):
         """
         [DEPRECATED] -> SearchViewSet
-        :method: GET
-        :param request:
-        :param pk:
-        :return: code, status, paginated response
         """
         query = q(name__icontains=pk)
         products = Product.objects.filter(query)
@@ -232,6 +283,101 @@ class ProductViewSet(viewsets.GenericViewSet):
         pass
 
 
+class ProductCategoryAPIViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated, ]
+
+    def get_queryset(self):
+        queryset = FirstCategory.objects.filter(is_active=True)
+        if self.action == 'gender':
+            queryset = GenderDivision.objects.filter(is_active=True)
+        elif self.action == 'second_category':
+            queryset = SecondCategory.objects.filter(is_active=True)
+        elif self.action == 'size':
+            queryset = Size.objects.all()
+        elif self.action == 'brand':
+            queryset = Brand.objects.all()
+        return queryset
+
+    def get_serializer_class(self):
+        serializer = FirstCategorySerializer
+        if self.action == 'gender':
+            serializer = GenderSerializer
+        elif self.action == 'second_category':
+            serializer = SecondCategorySerializer
+        elif self.action == 'size':
+            serializer = SizeSerializer
+        elif self.action == 'brand':
+            serializer = BrandSerializer
+        return serializer
+
+    @action(methods=['get'], detail=False,)
+    def gender(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def first_category(self, request, *args, **kwargs):
+        gender_pk = kwargs['pk']
+        try:
+            gender = GenderDivision.objects.get(pk=gender_pk)
+        except GenderDivision.DoesNotExist:
+            raise Http404
+        queryset = self.get_queryset().filter(gender=gender)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def second_category(self, request, *args, **kwargs):
+        fc_pk = kwargs['pk']
+        try:
+            first_category = FirstCategory.objects.get(pk=fc_pk)
+        except FirstCategory.DoesNotExist:
+            raise Http404
+        queryset = self.get_queryset().filter(parent=first_category)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def size(self, request, *args, **kwargs):
+        fc_pk = kwargs['pk']
+        try:
+            first_category = FirstCategory.objects.get(pk=fc_pk)
+        except FirstCategory.DoesNotExist:
+            raise Http404
+        queryset = self.get_queryset().filter(category=first_category)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['get'], detail=False)
+    def brand(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class TagViewSet(viewsets.GenericViewSet):
+    queryset = Tag
+    permission_classes = [IsAuthenticated,]
+
+    @action(methods=['post'], detail=False)
+    def searching(self, request, *args, **kwargs):
+        """
+        tag page 에서 tag 검색을 할 때 각 글자에 해당하는 태그를 조회하는 api 입니다.
+        없는 태그의 경우 create 를 TagViewSet에서 하지 않고 ProductViewSet의 create 에서 생성됩니다.
+        """
+        keyword = request.data['keyword']
+        queryset = Tag.objects.prefetch_related('product_set') \
+                              .filter(tag__icontains=keyword) \
+                              .annotate(product_count=Count('product')) \
+                              .values('tag', 'id') \
+                              .order_by('-product_count')[:15]
+        if not queryset.exists():
+            return None
+        serializer = TagSerializer(queryset)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class FollowViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
     serializer_class = FollowSerializer
@@ -254,7 +400,7 @@ class FollowViewSet(viewsets.GenericViewSet):
             .prefetch_related('tag')\
             .filter(_to=None)
         self.products_by_seller = Product.objects\
-            .select_related('seller', 'category', 'brand')\
+            .select_related('seller', 'brand')\
             .select_related('seller__profile')\
             .prefetch_related('seller___to')\
             .prefetch_related('tag')\
@@ -745,3 +891,50 @@ class SearchViewSet(viewsets.GenericViewSet):
             .filter(nickname__icontains=keyword)\
             .order_by('nickname')[:5]
         return queryset
+
+
+class StoreViewSet(viewsets.GenericViewSet):
+    pagination_class = StorePagination
+    permission_classes = [IsAuthenticated, ]
+
+    @action(methods=['get'], detail=True)
+    def shop(self, request, *args, **kwargs):
+
+        retrieve_user = self.get_retrieve_user(kwargs['pk'])
+
+        store_serializer = StoreSerializer(retrieve_user)
+
+        products = retrieve_user.product_set.all().order_by('-created_at')
+
+        paginator = StorePagination()
+        page = paginator.paginate_queryset(queryset=products, request=request)
+        products_serializer = StoreProductSerializer(page, many=True)
+
+        return paginator.get_paginated_response(products_serializer.data, profile=store_serializer.data)
+
+    @action(methods=['get'], detail=True)
+    def liked(self, request, *args, **kwargs):
+
+        retrieve_user = self.get_retrieve_user(kwargs['pk'])
+        if not retrieve_user:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+        # if not retrieve_user.liker.all():
+        #     return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+        # TODO : order by created_at
+        likes = retrieve_user.liker.filter(is_liked=True)
+
+        paginator = StorePagination()
+        page = paginator.paginate_queryset(queryset=likes, request=request)
+        products_serializer = StoreLikeSerializer(page, many=True)
+        return paginator.get_paginated_response(products_serializer.data)
+
+    def get_retrieve_user(self, pk):
+
+        try:
+            retrieve_user = User.objects.get(pk=pk)
+        except:
+            retrieve_user = None
+
+        return retrieve_user

@@ -2,7 +2,7 @@ from rest_framework.routers import Route, DefaultRouter,SimpleRouter, DynamicRou
 from .views import (
     ProductViewSet, TradeViewSet, FollowViewSet,
     PaymentViewSet,
-    SearchViewSet)
+    SearchViewSet, StoreViewSet)
 
 
 class CustomRouter(DefaultRouter):
@@ -56,3 +56,4 @@ router.register('trades', TradeViewSet, basename='trades')
 router.register('follow', FollowViewSet, basename='follow')
 router.register('payment', PaymentViewSet, basename='payment')
 router.register('search', SearchViewSet, basename='search')
+router.register('store', StoreViewSet, basename='shop')
