@@ -45,9 +45,16 @@ class DeliveryPolicySerializer(serializers.ModelSerializer):
 
 
 class FirstCategorySerializer(serializers.ModelSerializer):
+    child = serializers.SerializerMethodField()
+
     class Meta:
         model = FirstCategory
-        fields = ['name', 'id']
+        fields = ['name', 'id', 'child']
+
+    def get_child(self, obj):
+        if obj.second_category.first():
+            return True
+        return False
 
 
 class SecondCategorySerializer(serializers.ModelSerializer):
@@ -58,13 +65,19 @@ class SecondCategorySerializer(serializers.ModelSerializer):
 
 class GenderSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
+    child = serializers.SerializerMethodField()
 
     class Meta:
         model = GenderDivision
-        fields = ['name', 'id']
+        fields = ['name', 'id', 'child']
 
     def get_name(self, obj):
         return obj.get_name_display()
+
+    def get_child(self, obj):
+        if obj.category.first():
+            return True
+        return False
 
 
 class SizeSerializer(serializers.ModelSerializer):
