@@ -102,6 +102,7 @@ class ProductSerializer(serializers.ModelSerializer):
     """
     brand = BrandSerializer(read_only=True)
     seller = UserSerializer()
+    discounted_price = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField() # TODO : FIX field name 'thumbnalis' -> 'images'
     size = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
@@ -125,6 +126,9 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.size.category.name == 'SHOES':
             return "{}(cm)".format(obj.size.size)
         return "{}({})".format(obj.size.size_name, obj.size.size)
+
+    def get_discounted_price(self,obj):
+        return obj.discounted_price
 
 
 class ProductCreateSerializer(serializers.ModelSerializer):
@@ -274,13 +278,23 @@ class ProductForTradeSerializer(serializers.ModelSerializer):
         return obj.discounted_price
 
 
+class PaymentInfoForTrade(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryPolicy
+        fields = '__all__'
+
+
 class TradeSerializer(serializers.ModelSerializer):
     product = ProductForTradeSerializer(read_only=True)
     seller = SellerForTradeSerializer()
+    payinfo = serializers.SerializerMethodField()
 
     class Meta:
         model = Trade
-        fields = ('id', 'product', 'seller')
+        fields = ('id', 'product', 'seller', 'payinfo')
+
+    def get_payinfo(self, obj):
+        return PaymentInfoForTrade(obj.seller.delivery_policy).data
 
 
 class FilterSerializer(serializers.Serializer):
@@ -326,14 +340,14 @@ class PayFormSerializer(serializers.Serializer):
     user_info = serializers.SerializerMethodField()
     order_id = serializers.SerializerMethodField()
 
-    def get_name(self,obj):
+    def get_name(self, obj):
         return self.context.get('name')
 
-    def get_items(self,obj):
+    def get_items(self, obj):
         items = self.context.get('products')
         return ItemSerializer(items, many=True).data
 
-    def get_user_info(self,obj):
+    def get_user_info(self, obj):
         user_info = self.context.get('user')
         return UserinfoSerializer(user_info).data
 
@@ -470,3 +484,11 @@ class StoreLikeSerializer(serializers.ModelSerializer):
         if obj.product:
             return obj.product.id
         return None
+
+
+class GetPayFormSerializer(serializers.Serializer):
+    trades = serializers.ListField()
+    price = serializers.IntegerField()
+    address = serializers.CharField()
+    memo = serializers.CharField()
+    mountain = serializers.BooleanField()

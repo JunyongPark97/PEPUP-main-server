@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from .models import Brand, Product, Trade, ProdThumbnail, Like, Tag, Follow, GenderDivision, FirstCategory, \
-    SecondCategory, Size, ProdImage
+    SecondCategory, Size, Payment, Deal, ProdImage, Delivery
 
 
 # Register your models here.
@@ -16,7 +16,11 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 class TradeAdmin(admin.ModelAdmin):
-    list_display = ['pk','product','seller','buyer', 'status']
+    list_display = ['pk', 'product', 'seller', 'buyer', 'deal', 'status']
+
+
+class DealAdmin(admin.ModelAdmin):
+    list_display = ['pk', 'seller', 'buyer', 'payment', 'total','remain','delivery_charge', 'delivery']
 
 
 class FollowAdmin(admin.ModelAdmin):
@@ -62,6 +66,10 @@ class ProdImageAdmin(admin.ModelAdmin):
             return mark_safe('<img src="%s" width=120px "/>' % obj.image.url)
 
 
+class DeliveryAdmin(admin.ModelAdmin):
+    list_display = ['sender','receiver','state','pk']
+
+
 admin.site.register(Brand)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Trade, TradeAdmin)
@@ -70,6 +78,10 @@ admin.site.register(ProdImage, ProdImageAdmin)
 admin.site.register(Like)
 admin.site.register(Tag)
 admin.site.register(Follow, FollowAdmin)
+admin.site.register(Payment)
+admin.site.register(Deal, DealAdmin)
+admin.site.register(Delivery,DeliveryAdmin)
+
 
 admin.site.register(GenderDivision, GenderAdmin)
 admin.site.register(FirstCategory, FirstCategoryAdmin)

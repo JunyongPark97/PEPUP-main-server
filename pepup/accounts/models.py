@@ -97,6 +97,7 @@ class Profile(models.Model):
 
 class Address(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=30, verbose_name='이름', default='')
     zipNo = models.CharField(max_length=10, verbose_name='우편번호')
     roadAddr = models.TextField(verbose_name='도로명주소')
     jibunAddr = models.TextField(verbose_name='지번주소')
