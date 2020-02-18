@@ -102,6 +102,9 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param request:
         :return: code and status
         """
+        user = request.user
+        if not hasattr(user, 'delivery_policy'):
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
 
         data = request.data.copy()
 
