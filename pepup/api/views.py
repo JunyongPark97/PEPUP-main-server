@@ -116,12 +116,15 @@ class ProductViewSet(viewsets.GenericViewSet):
         data = request.data.copy()
 
         if not 'image' in data:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Creating needs Image"}, status=status.HTTP_400_BAD_REQUEST)
 
         image_data = data.pop('image')
 
         if '' in image_data:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        if not 'tag' in data:
+            return Response({"message": "Creating needs Tag"}, status=status.HTTP_400_BAD_REQUEST)
 
         tags = data.pop('tag')
 
@@ -151,7 +154,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         data = request.data.copy()
 
         if not 'image' in data:
-            return Response({"message": "사진을 한장 이상 첨부해야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Updating needs one more Image"}, status=status.HTTP_400_BAD_REQUEST)
 
         if '' in data['image']:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -203,6 +206,9 @@ class ProductViewSet(viewsets.GenericViewSet):
         Product 를 삭제하지 않고 is_active=False 로 변환합니다.
         """
         instance = self.get_object()
+        user = request.user
+        if instance.seller.id != user.id:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
         instance.is_active = False
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -365,8 +371,6 @@ class ProductCategoryAPIViewSet(viewsets.GenericViewSet):
             queryset = SecondCategory.objects.filter(is_active=True)
         elif self.action == 'size':
             queryset = Size.objects.all()
-        elif self.action == 'brand':
-            queryset = Brand.objects.all()
         return queryset
 
     def get_serializer_class(self):
@@ -377,8 +381,6 @@ class ProductCategoryAPIViewSet(viewsets.GenericViewSet):
             serializer = SecondCategorySerializer
         elif self.action == 'size':
             serializer = SizeSerializer
-        elif self.action == 'brand':
-            serializer = BrandSerializer
         return serializer
 
     @action(methods=['get'], detail=False,)
@@ -420,15 +422,51 @@ class ProductCategoryAPIViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(methods=['get'], detail=False)
-    def brand(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+
+class BrandViewSet(viewsets.GenericViewSet):
+    queryset = Brand.objects.all()
+    permission_classes = [IsAuthenticated, ]
+    serializer_class = BrandSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        brand list api
+        Other (선택안함) 이 최상단에 있도록 설정
+        """
+        result = self.get_ordered_queryset()
+        serializer = self.get_serializer(result, many=True)
         return Response(serializer.data)
+
+    @action(methods=['post'], detail=False)
+    def searching(self, request, *args, **kwargs):
+        """
+        brand 검색을 할 때 각 글자에 해당하는 brand 를 조회하는 api 입니다.
+        Other (선택안함) 은 검색되지 않음.
+        """
+        keyword = request.data['keyword']
+        if keyword:
+            value = self.get_queryset()\
+                    .exclude(name='Other')\
+                    .filter(name__icontains=keyword) \
+                    .order_by('id')[:15]
+            serializer = self.get_serializer(value, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            serializer = self.get_serializer(self.get_ordered_queryset(), many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def get_ordered_queryset(self):
+        queryset = self.get_queryset()
+        other = queryset.filter(name="Other")
+        qs = queryset.exclude(name="Other")
+        other = list(other)
+        qs = list(qs)
+        result = other + qs
+        return result
 
 
 class TagViewSet(viewsets.GenericViewSet):
-    queryset = Tag
+    queryset = Tag.objects.all()
     permission_classes = [IsAuthenticated,]
 
     @action(methods=['post'], detail=False)
@@ -438,15 +476,15 @@ class TagViewSet(viewsets.GenericViewSet):
         없는 태그의 경우 create 를 TagViewSet에서 하지 않고 ProductViewSet의 create 에서 생성됩니다.
         """
         keyword = request.data['keyword']
-        queryset = Tag.objects.prefetch_related('product_set') \
+        if len(keyword) < 2:
+            return Response([], status=status.HTTP_200_OK)
+        value = self.get_queryset()\
+                              .prefetch_related('product_set') \
                               .filter(tag__icontains=keyword) \
                               .annotate(product_count=Count('product')) \
                               .values('tag', 'id') \
                               .order_by('-product_count')[:15]
-        if not queryset.exists():
-            return None
-        serializer = TagSerializer(queryset)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(value, status=status.HTTP_200_OK)
 
 
 class FollowViewSet(viewsets.GenericViewSet):

@@ -2,7 +2,8 @@ from rest_framework.routers import Route, DefaultRouter,SimpleRouter, DynamicRou
 from .views import (
     ProductViewSet, TradeViewSet, FollowViewSet,
     PaymentViewSet,
-    SearchViewSet, StoreViewSet, ReviewViewSet, DeliveryPolicyViewSet, ProductCategoryAPIViewSet)
+    SearchViewSet, StoreViewSet, ReviewViewSet, DeliveryPolicyViewSet, ProductCategoryAPIViewSet, TagViewSet,
+    BrandViewSet)
 
 
 class CustomRouter(DefaultRouter):
@@ -60,3 +61,5 @@ router.register('store', StoreViewSet, basename='shop')
 router.register('review', ReviewViewSet, basename='review')
 router.register('delivery-policy', DeliveryPolicyViewSet, basename='review')
 router.register('category', ProductCategoryAPIViewSet, basename='review')
+router.register('tag', TagViewSet, basename='review')
+router.register('brand', BrandViewSet, basename='review')
