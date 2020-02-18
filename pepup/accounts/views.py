@@ -83,7 +83,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         self.process_login()
 
     def get_response(self):
-        response = Response({'code': 1, 'status': '로그인에 성공하였습니다.', 'token':self.token.key}, status=status.HTTP_200_OK)
+        response = Response({'code': 1, 'status': '로그인에 성공하였습니다.', 'token':self.token.key, 'pk':self.user.id}, status=status.HTTP_200_OK)
         return response
 
     @action(methods=['post'],detail=False)
@@ -102,7 +102,7 @@ class AccountViewSet(viewsets.GenericViewSet):
 
         self._login()
         if not self.user.nickname:
-            return Response({'code': 2, 'status': '닉네임이 없습니다.', 'token': self.token.key}, status=status.HTTP_200_OK)
+            return Response({'code': 2, 'status': '닉네임이 없습니다.', 'token': self.token.key, 'pk':self.user.id}, status=status.HTTP_200_OK)
         return self.get_response()
 
     @action(methods=['post'], detail=False)
@@ -188,13 +188,14 @@ class AccountViewSet(viewsets.GenericViewSet):
             elif PhoneConfirmSerializer().timeout(phoneconfirm):
                 self.send_sms()
                 self.response = Response(
-                    {"code": -2, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key},
+                    {"code": -2, "status": _("세션이 만료되었습니다. 새로운 key를 보냅니다."), "token": self.token.key, 'pk': self.user.id},
                     status=status.HTTP_200_OK)
             else:
                 self.response = Response({
                     "code": -1,
                     "status": _("이미 전송하였습니다"),
-                    "token": self.token.key}, status=status.HTTP_200_OK
+                    "token": self.token.key,
+                    'pk': self.user.id}, status=status.HTTP_200_OK
                 )
         except PhoneConfirm.DoesNotExist:
             smsmanager = SMSManager(user=self.user)
@@ -206,7 +207,8 @@ class AccountViewSet(viewsets.GenericViewSet):
                 self.response = Response({
                     "code": 1,
                     "status": _('메세지를 전송하였습니다'),
-                    "token": self.token.key
+                    "token": self.token.key,
+                    "pk": self.user.id
                 }, status=status.HTTP_200_OK)
 
     def _confirmsms(self):
@@ -498,7 +500,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             smsconfirm.delete()
             token = create_token(self.token_model, self.user)
             self.response = Response({
-                'code': 1, 'status': 'success', 'token': token.key
+                'code': 1, 'status': 'success', 'token': token.key, 'pk': self.user.id
             }, status=status.HTTP_200_OK)
         else:
             self.response = Response({'code': -1, 'status': 'key does not match'},status=status.HTTP_200_OK)
@@ -569,7 +571,9 @@ class SocialUserViewSet(ViewSetMixin, SocialLoginView):
         self.serializer.is_valid(raise_exception=True)
         self._login()
         self.create()
-        return self.get_response()
+        response = self.get_response()
+        response.data['pk'] = self.user.id
+        return response
 
     @action(methods=['get'],detail=False)
     def callback(self, request):
