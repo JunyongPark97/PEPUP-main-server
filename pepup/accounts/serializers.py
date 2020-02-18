@@ -1,3 +1,4 @@
+from django.db.models import Avg
 from rest_framework import serializers, exceptions
 from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings
@@ -124,18 +125,22 @@ class ThumbnailSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
-    reviews = serializers.SerializerMethodField()
+    review_score = serializers.SerializerMethodField()
     sold = serializers.SerializerMethodField()
     followers = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'nickname', 'email', 'profile', 'reviews', 'sold', 'followers']
+        fields = ['id', 'nickname', 'email', 'profile', 'review_score', 'sold', 'followers']
 
     def get_sold(self, obj):
         return obj.product_set.filter(sold=True).count()
 
-    def get_reviews(self, obj):
+    def get_review_score(self, obj):
+        if obj.received_reviews.first():
+            score = obj.received_reviews.all().values('satisfaction').\
+                annotate(score=Avg('satisfaction')).values('score')[0]['score']
+            return score
         return 0
 
     def get_followers(self, obj):

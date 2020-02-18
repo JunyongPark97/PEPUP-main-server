@@ -38,12 +38,13 @@ from .serializers import (
     PayFormSerializer,
     SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
     StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
-    GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer)
+    GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer,
+    SimpleProfileSerializer, StoreReviewSerializer)
 
 from accounts.serializers import UserSerializer
 
 from api.pagination import FollowPagination, HomePagination, ProductSearchResultPagination, \
-    TagSearchResultPagination, StorePagination
+    TagSearchResultPagination, StorePagination, StoreReviewPagination
 
 # bootpay
 from .Bootpay import BootpayApi
@@ -436,7 +437,6 @@ class FollowViewSet(viewsets.GenericViewSet):
             return Response({'code': -1, 'status': "로그인해주세요"})
         self.get_products_by_follow()
         self.get_recommended_seller()
-        print(list(self.products_by_seller.values_list('id', flat=True)))
         page = self.paginate_queryset(self.products_by_seller | self.products_by_tag)
         if page is not None:
             serializer = self.custom_get_serializer(page, many=True, context={"request": self.request, "by_seller": list(self.products_by_seller.values_list('id', flat=True))})
@@ -997,10 +997,24 @@ class StoreViewSet(viewsets.GenericViewSet):
     pagination_class = StorePagination
     permission_classes = [IsAuthenticated, ]
 
+    def get_serializer_class(self):
+        if self.action == 'shop':
+            serializer = MainSerializer
+        elif self.action == 'like':
+            serializer = StoreLikeSerializer
+        elif self.action == 'review':
+            serializer = SimpleProfileSerializer
+        else:
+            serializer = super(StoreViewSet, self).get_serializer_class()
+        return serializer
+
     @action(methods=['get'], detail=True)
     def shop(self, request, *args, **kwargs):
 
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
+
+        if not retrieve_user:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
 
         store_serializer = StoreSerializer(retrieve_user)
 
@@ -1008,12 +1022,12 @@ class StoreViewSet(viewsets.GenericViewSet):
 
         paginator = StorePagination()
         page = paginator.paginate_queryset(queryset=products, request=request)
-        products_serializer = StoreProductSerializer(page, many=True)
+        products_serializer = self.get_serializer(page, many=True)
 
         return paginator.get_paginated_response(products_serializer.data, profile=store_serializer.data)
 
     @action(methods=['get'], detail=True)
-    def liked(self, request, *args, **kwargs):
+    def like(self, request, *args, **kwargs):
 
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
         if not retrieve_user:
@@ -1027,16 +1041,36 @@ class StoreViewSet(viewsets.GenericViewSet):
 
         paginator = StorePagination()
         page = paginator.paginate_queryset(queryset=likes, request=request)
-        products_serializer = StoreLikeSerializer(page, many=True)
+        products_serializer = self.get_serializer(page, many=True)
         return paginator.get_paginated_response(products_serializer.data)
 
-    def get_retrieve_user(self, pk):
+    @action(methods=['get'], detail=True)
+    def review(self, request, *args, **kwargs):
 
+        retrieve_user = self.get_retrieve_user(kwargs['pk'])
+
+        if not retrieve_user:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+        simple_profile_serializer = self.get_serializer(retrieve_user)
+
+        reviews = retrieve_user.received_reviews
+        paginator = StoreReviewPagination()
+
+        if not reviews.first():
+            return paginator.get_paginated_response(simple_profile_serializer.data)
+
+        reviews = reviews.all()
+        page = paginator.paginate_queryset(queryset=reviews, request=request)
+        review_serializer = StoreReviewSerializer(page, many=True)
+
+        return paginator.get_paginated_response(simple_profile_serializer.data, data=review_serializer.data)
+
+    def get_retrieve_user(self, pk):
         try:
             retrieve_user = User.objects.get(pk=pk)
         except:
             retrieve_user = None
-
         return retrieve_user
 
 

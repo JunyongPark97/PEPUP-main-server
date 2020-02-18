@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.http import Http404
 from rest_framework import serializers
-
+from django.db.models import Avg
 from accounts.models import User, DeliveryPolicy
 from accounts.serializers import UserSerializer, ThumbnailSerializer
 from .models import (Product, Brand, Trade, ProdThumbnail,
@@ -106,7 +106,6 @@ class ProductSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField() # TODO : FIX field name 'thumbnalis' -> 'images'
     size = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
-    discount_price = serializers.SerializerMethodField()
     tag = TagSerializer(many=True)
 
     class Meta:
@@ -128,7 +127,7 @@ class ProductSerializer(serializers.ModelSerializer):
             return "{}(cm)".format(obj.size.size)
         return "{}({})".format(obj.size.size_name, obj.size.size)
 
-    def get_discounted_price(self,obj):
+    def get_discounted_price(self, obj):
         return obj.discounted_price
 
 
@@ -221,11 +220,11 @@ class FollowSerializer(serializers.ModelSerializer):
 
 class MainSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
-    seller = UserSerializer()
+    # seller = UserSerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'seller', 'on_discount', 'sold', 'is_refundable', 'thumbnails']
+        fields = ['id', 'on_discount', 'sold', 'is_refundable', 'thumbnails']
 
     def get_thumbnails(self, obj):
         thumbnails = obj.prodthumbnail_set.first()
@@ -404,6 +403,7 @@ class SearchResultSerializer(serializers.ModelSerializer):
         else:
             return None
 
+
 class FollowingSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -426,7 +426,7 @@ class StoreProductSerializer(serializers.ModelSerializer):
 
 
 class StoreSerializer(serializers.ModelSerializer):
-    profile_img = serializers.SerializerMethodField()
+    profile = serializers.SerializerMethodField()
     profile_introduce = serializers.SerializerMethodField()
     review_score = serializers.SerializerMethodField()
     follower = serializers.SerializerMethodField()
@@ -434,12 +434,15 @@ class StoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'nickname', 'profile_img', 'profile_introduce', 'review_score',
+        fields = ['id', 'nickname', 'profile', 'profile_introduce', 'review_score',
                   'follower', 'following']
 
-    def get_profile_img(self, obj):
-        profile = obj.profile
-        return profile.thumbnail_img_url
+    def get_profile(self, obj):
+        try:
+            profile = obj.profile
+            return ThumbnailSerializer(profile).data
+        except:
+            return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
 
     def get_profile_introduce(self, obj):
         profile = obj.profile
@@ -448,7 +451,10 @@ class StoreSerializer(serializers.ModelSerializer):
         return ''
 
     def get_review_score(self, obj):
-        return 4
+        if obj.received_reviews.first():
+            score = obj.received_reviews.all().values('satisfaction').annotate(score=Avg('satisfaction')).values('score')[0]['score']
+            return score
+        return 0
 
     def get_follower(self, obj):
         follower = Follow.objects.filter(_to=obj, is_follow=True)
@@ -473,11 +479,39 @@ class StoreLikeSerializer(serializers.ModelSerializer):
             return ProdThumbnailSerializer(thumbnails).data
         return [{"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
 
-
     def get_id(self, obj):
         if obj.product:
             return obj.product.id
         return None
+
+
+class SimpleProfileSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+    review_score = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'profile', 'review_score', 'nickname']
+
+    def get_profile(self, obj):
+        try:
+            profile = obj.profile
+            return ThumbnailSerializer(profile).data
+        except:
+             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+
+    def get_review_score(self, obj):
+        if obj.received_reviews.first():
+            score = obj.received_reviews.all().values('satisfaction').\
+                annotate(score=Avg('satisfaction')).values('score')[0]['score']
+            return score
+        return 0
+
+
+class StoreReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['buyer', 'context', 'satisfaction', 'thumbnail', 'created_at']
 
 
 class GetPayFormSerializer(serializers.Serializer):
