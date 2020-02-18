@@ -429,13 +429,14 @@ class StoreSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
     profile_introduce = serializers.SerializerMethodField()
     review_score = serializers.SerializerMethodField()
-    follower = serializers.SerializerMethodField()
-    following = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    followers = serializers.SerializerMethodField()
+    followings = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'nickname', 'profile', 'profile_introduce', 'review_score',
-                  'follower', 'following']
+                  'review_count', 'followers', 'followings']
 
     def get_profile(self, obj):
         try:
@@ -454,13 +455,19 @@ class StoreSerializer(serializers.ModelSerializer):
         if obj.received_reviews.first():
             score = obj.received_reviews.all().values('satisfaction').annotate(score=Avg('satisfaction')).values('score')[0]['score']
             return score
+        return 0.0
+
+    def get_review_count(self, obj):
+        if obj.received_reviews.first():
+            count = obj.received_reviews.all().count()
+            return count
         return 0
 
-    def get_follower(self, obj):
+    def get_followers(self, obj):
         follower = Follow.objects.filter(_to=obj, is_follow=True)
         return follower.count()
 
-    def get_following(self, obj):
+    def get_followings(self, obj):
         following = Follow.objects.filter(_from=obj, is_follow=True, tag__isnull=True)
         return following.count()
 

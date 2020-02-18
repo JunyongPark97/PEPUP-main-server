@@ -131,7 +131,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'nickname', 'email', 'profile', 'review_score', 'sold', 'followers']
+        fields = ['id', 'nickname', 'profile', 'review_score', 'sold', 'followers']
 
     def get_sold(self, obj):
         return obj.product_set.filter(sold=True).count()
@@ -141,7 +141,7 @@ class UserSerializer(serializers.ModelSerializer):
             score = obj.received_reviews.all().values('satisfaction').\
                 annotate(score=Avg('satisfaction')).values('score')[0]['score']
             return score
-        return 0
+        return 0.0
 
     def get_followers(self, obj):
         return obj._to.count()

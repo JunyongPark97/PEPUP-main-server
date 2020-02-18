@@ -45,7 +45,7 @@ class StorePagination(PepupPagination):
             ('count', self.page.paginator.count),
             ('next', self.get_next_page_num()),
             ('previous', self.get_prev_page_num()),
-            ('profile', profile),
+            ('info', profile),
             ('results', data)
         ]))
 
@@ -60,13 +60,13 @@ class StoreReviewPagination(PepupPagination):
                 ('count', 0),
                 ('next', 0),
                 ('previous', 0),
-                ('profile', profile),
+                ('info', profile),
                 ('results', [])
             ]))
         return Response(OrderedDict([
             ('count', self.page.paginator.count),
             ('next', self.get_next_page_num()),
             ('previous', self.get_prev_page_num()),
-            ('profile', profile),
+            ('info', profile),
             ('results', data)
         ]))
