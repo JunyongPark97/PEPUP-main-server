@@ -5,7 +5,7 @@ from rest_framework import serializers
 from accounts.models import User, DeliveryPolicy
 from accounts.serializers import UserSerializer, ThumbnailSerializer
 from .models import (Product, Brand, Trade, ProdThumbnail,
-                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage)
+                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage, Review)
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -106,6 +106,7 @@ class ProductSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField() # TODO : FIX field name 'thumbnalis' -> 'images'
     size = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
+    discount_price = serializers.SerializerMethodField()
     tag = TagSerializer(many=True)
 
     class Meta:
@@ -176,7 +177,7 @@ class FollowSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
     tag = TagSerializer(many=True)
     by = serializers.SerializerMethodField()
-    discount_price = serializers.SerializerMethodField()
+    discounted_price = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
     size = serializers.SerializerMethodField()
@@ -196,11 +197,8 @@ class FollowSerializer(serializers.ModelSerializer):
             return 1
         return 2
 
-    def get_discount_price(self, obj):
-        discount_percent = obj.discount_rate
-        discount_rate = 1 - discount_percent * 0.01
-        discount_price = int(obj.price * discount_rate)
-        return discount_price
+    def get_discounted_price(self,obj):
+        return obj.discounted_price
 
     def get_liked(self, obj):
         request = self.context['request']
@@ -372,7 +370,7 @@ class DealSerializer(serializers.ModelSerializer):
 
 class SearchResultSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
-    discount_price = serializers.SerializerMethodField()
+    discounted_price = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
     size = serializers.SerializerMethodField()
 
@@ -388,12 +386,8 @@ class SearchResultSerializer(serializers.ModelSerializer):
             return [{"image":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}]
         return ProdImageSerializer(images).data
 
-
-    def get_discount_price(self, obj):
-        origin_price = obj.price
-        discount_rate = obj.discount_rate
-        discount_price = int(origin_price * (1 - discount_rate * 0.01))
-        return discount_price
+    def get_discounted_price(self,obj):
+        return obj.discounted_price
 
     def get_liked(self, obj):
         request = self.context['request']
@@ -492,3 +486,17 @@ class GetPayFormSerializer(serializers.Serializer):
     address = serializers.CharField()
     memo = serializers.CharField()
     mountain = serializers.BooleanField()
+
+
+class ReviewCreateSerializer(serializers.ModelSerializer):
+    buyer = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Review
+        fields = [
+            'seller', 'buyer',
+            'context',
+            'satisfaction',
+            'deal',
+            'thumbnail'
+        ]

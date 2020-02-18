@@ -38,7 +38,7 @@ from .serializers import (
     PayFormSerializer,
     SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
     StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
-    GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer)
+    GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer)
 
 from accounts.serializers import UserSerializer
 
@@ -1038,3 +1038,22 @@ class StoreViewSet(viewsets.GenericViewSet):
             retrieve_user = None
 
         return retrieve_user
+
+
+class ReviewViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
+    serializer_class = ReviewCreateSerializer
+    permission_classes = [IsAuthenticated, ]
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+
+            # Done!
+            serializer.create(data)
+            return Response(status=status.HTTP_201_CREATED)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+

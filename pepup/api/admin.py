@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from .models import Brand, Product, Trade, ProdThumbnail, Like, Tag, Follow, GenderDivision, FirstCategory, \
-    SecondCategory, Size, Payment, Deal, ProdImage, Delivery
+    SecondCategory, Size, Payment, Deal, ProdImage, Delivery, Review
 
 
 # Register your models here.
@@ -87,4 +87,6 @@ admin.site.register(GenderDivision, GenderAdmin)
 admin.site.register(FirstCategory, FirstCategoryAdmin)
 admin.site.register(SecondCategory, SecondCategoryAdmin)
 admin.site.register(Size, SizeAdmin)
+
+admin.site.register(Review)
 
