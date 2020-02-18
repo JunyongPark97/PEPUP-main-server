@@ -270,12 +270,12 @@ class ProductViewSet(viewsets.GenericViewSet):
         try:
             product = Product.objects.get(pk=pk)
         except Product.DoesNotExist:
-            return Response({'status': 'product does not exist'},status=status.HTTP_404_NOT_FOUND)
+            return Response({'status': 'product does not exist'}, status=status.HTTP_404_NOT_FOUND)
         try:
             like = Like.objects.get(user=user, product=product)
         except Like.DoesNotExist:
-            return Response({'returns': {'is_liked':False}}, status=status.HTTP_200_OK)
-        return Response({'returns': self.get_serializer(like).data}, status.HTTP_200_OK)
+            return Response({'results': {'is_liked': False}}, status=status.HTTP_200_OK)
+        return Response({'results': self.get_serializer(like).data}, status.HTTP_200_OK)
 
     def update(self, request, pk=None):
         pass
