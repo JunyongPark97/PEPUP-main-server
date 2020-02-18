@@ -61,14 +61,17 @@ class ProductViewSet(viewsets.GenericViewSet):
     queryset = Product.objects.all()
     pagination_class = HomePagination
     permission_classes = [IsAuthenticated, ]
+    serializer_class = ProductSerializer
 
     def get_serializer_class(self):
         if self.action == 'list':
             serializer = MainSerializer
         elif self.action == 'create':
             serializer = ProductCreateSerializer
+        elif self.action == 'retrieve':
+            serializer = ProductSerializer
         else:
-            return super(ProductViewSet,self).get_serializer_class()
+            serializer = super(ProductViewSet, self).get_serializer_class()
         return serializer
 
     def list(self, request):
