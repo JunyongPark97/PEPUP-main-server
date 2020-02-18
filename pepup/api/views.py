@@ -62,11 +62,12 @@ class ProductViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, ]
 
     def get_serializer_class(self):
-        serializer = ProductSerializer
         if self.action == 'list':
             serializer = MainSerializer
         elif self.action == 'create':
             serializer = ProductCreateSerializer
+        else:
+            return super(ProductViewSet,self).get_serializer_class()
         return serializer
 
     def list(self, request):
