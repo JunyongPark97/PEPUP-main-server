@@ -509,9 +509,19 @@ class SimpleProfileSerializer(serializers.ModelSerializer):
 
 
 class StoreReviewSerializer(serializers.ModelSerializer):
+    buyer_profile = serializers.SerializerMethodField()
+
     class Meta:
         model = Review
-        fields = ['buyer', 'context', 'satisfaction', 'thumbnail', 'created_at']
+        fields = ['buyer_profile', 'context', 'satisfaction', 'thumbnail', 'created_at']
+
+    def get_buyer_profile(self, obj):
+        buyer = obj.buyer
+        try:
+            profile = buyer.profile
+            return ThumbnailSerializer(profile).data
+        except:
+             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
 
 
 class GetPayFormSerializer(serializers.Serializer):
