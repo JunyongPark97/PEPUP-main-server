@@ -65,14 +65,12 @@ class ProductViewSet(viewsets.GenericViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            serializer = MainSerializer
-        elif self.action == 'create' or 'update':
-            serializer = ProductCreateSerializer
-        elif self.action == 'retrieve':
-            serializer = ProductSerializer
-        else:
-            serializer = super(ProductViewSet, self).get_serializer_class()
-        return serializer
+            return MainSerializer
+        elif self.action in ['create', 'update']:
+            return ProductCreateSerializer
+        elif self.action in ['like', 'liked']:
+            return LikeSerializer
+        return super(ProductViewSet, self).get_serializer_class()
 
     def list(self, request):
         """
@@ -317,7 +315,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         return filtered_products
 
     # todo: response fix -> code and status
-    @action(methods=['post'], detail=True, serializer_class=LikeSerializer)
+    @action(methods=['post'], detail=True)
     def like(self, request, pk):
         """
         method: POST
@@ -337,10 +335,13 @@ class ProductViewSet(viewsets.GenericViewSet):
             else:
                 like.is_liked = True
             like.save()
+        print(like)
+        print(self.action)
+        print(self.get_serializer())
         serializer = self.get_serializer(like)
         return Response({'results': serializer.data}, status=status.HTTP_200_OK)
 
-    @action(methods=['get'], detail=True, serializer_class=LikeSerializer)
+    @action(methods=['get'], detail=True)
     def liked(self, request, pk):
         """
         :method: GET
