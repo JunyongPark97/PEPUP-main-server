@@ -1088,14 +1088,11 @@ class StoreViewSet(viewsets.GenericViewSet):
         if not retrieve_user:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        # if not retrieve_user.liker.all():
-        #     return Response({}, status=status.HTTP_204_NO_CONTENT)
-
         # TODO : order by created_at
-        likes = retrieve_user.liker.filter(is_liked=True)
+        products = Product.objects.filter(like__user=retrieve_user, like__is_liked=True)
 
         paginator = StorePagination()
-        page = paginator.paginate_queryset(queryset=likes, request=request)
+        page = paginator.paginate_queryset(queryset=products, request=request)
         products_serializer = self.get_serializer(page, many=True)
         return paginator.get_paginated_response(products_serializer.data)
 
