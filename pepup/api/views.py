@@ -12,7 +12,7 @@ from rest_framework.decorators import authentication_classes, action
 from rest_framework import status, viewsets, generics
 from rest_framework import exceptions
 
-from django.db.models import F, Sum, Q, Value as V, Count, Subquery
+from django.db.models import F, Sum, Q, Value as V, Count, Subquery, ExpressionWrapper
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
@@ -67,7 +67,7 @@ class ProductViewSet(viewsets.GenericViewSet):
     serializer_class = ProductSerializer
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action in ['list', 'filter']:
             return MainSerializer
         elif self.action in ['create', 'update']:
             return ProductCreateSerializer
@@ -81,14 +81,88 @@ class ProductViewSet(viewsets.GenericViewSet):
         :param request:
         :return:
         """
-        try:
-            products = self.get_queryset()\
-                .select_related('seller__profile')\
-                .prefetch_related('seller___to') \
-                .prefetch_related(Prefetch('seller__product_set', queryset=self.queryset.filter(sold=True)))\
-                .prefetch_related('seller__product_set__seller').prefetch_related('prodthumbnail_set').all()
-        except Product.DoesNotExist:
-            raise Http404
+        products = self.get_queryset().\
+            prefetch_related('prodthumbnail_set').all()
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset=products, request=request)
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    @action(methods=['post'], detail=False)
+    def filter(self, request, *args, **kwargs):
+        filter_data = self.request.data.copy()
+
+        queryset = self.get_queryset()\
+            .select_related(
+            'brand',
+            'first_category',
+            'first_category__gender',
+            'second_category',
+            'size',
+            'seller__delivery_policy',
+            'second_category__parent',
+        ).prefetch_related('prodthumbnail_set').all()
+
+        if 'gender' in filter_data:
+            gender = filter_data.pop('gender')  # gender obj id(int)
+            queryset = queryset \
+                .filter(first_category__isnull=False) \
+                .filter(first_category__gender_id=gender)
+
+        if 'first_category' in filter_data:
+            first_category = filter_data.pop('first_category')
+            queryset = queryset \
+                .filter(first_category_id=first_category)
+
+        if 'second_category' in filter_data:
+            second_category = filter_data.pop('second_category')
+            queryset = queryset \
+                .filter(second_category_id=second_category)
+
+        if 'size' in filter_data:
+            size = filter_data.pop('size')
+            queryset = queryset \
+                .filter(size_id=size)
+
+        if 'brand' in filter_data:
+            brand = filter_data.pop('brand')
+            queryset = queryset \
+                .filter(brand_id=brand)
+
+        if 'on_sale' in filter_data:
+            on_sale = filter_data.pop('on_sale')
+            # on_sale=True
+            if on_sale:
+                queryset = queryset.filter(on_discount=True)
+
+                # calculate discount price
+                queryset = queryset \
+                    .annotate(discount_price=ExpressionWrapper(
+                    Ceil((F('price') * (1 - F('discount_rate'))) / 100) * 100,
+                    output_field=IntegerField()))
+
+                if 'lower_price' in filter_data:
+                    lower_price = filter_data.pop('lower_price')
+                    queryset = queryset.filter(discount_price__gte=lower_price)
+
+                if 'higher_price' in filter_data:
+                    higher_price = filter_data.pop('higher_price')
+                    queryset = queryset.filter(discount_price__lte=higher_price)
+
+        # no on_sale data or on_sale=False
+        if 'lower_price' in filter_data:
+            lower_price = filter_data.pop('lower_price')
+            queryset = queryset.filter(price__gte=lower_price)
+
+        if 'higher_price' in filter_data:
+            higher_price = filter_data.pop('higher_price')
+            queryset = queryset.filter(price__lte=higher_price)
+
+        if 'free_delivery' in filter_data:
+            queryset = queryset.filter(seller__delivery_policy__general=0)
+
+        products = queryset
 
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset=products, request=request)
@@ -338,9 +412,6 @@ class ProductViewSet(viewsets.GenericViewSet):
             else:
                 like.is_liked = True
             like.save()
-        print(like)
-        print(self.action)
-        print(self.get_serializer())
         serializer = self.get_serializer(like)
         return Response({'results': serializer.data}, status=status.HTTP_200_OK)
 

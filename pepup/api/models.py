@@ -4,7 +4,7 @@ import math
 
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFill
-
+from django.db.models import ExpressionWrapper
 
 # Create your models here.
 class Brand(models.Model):
