@@ -496,7 +496,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.response = Response({'code': -3,'status': 'no smsconfirm'}, status=status.HTTP_200_OK)
             return
 
-        if smsconfirm.is_confirmed == self.confirm_key:
+        if smsconfirm.key == self.confirm_key:
             smsconfirm.delete()
             token = create_token(self.token_model, self.user)
             self.response = Response({
