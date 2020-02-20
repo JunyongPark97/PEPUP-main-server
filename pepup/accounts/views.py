@@ -552,6 +552,13 @@ class AccountViewSet(viewsets.GenericViewSet):
         else:
             return Response({'code': -4, 'status': '요청바디가 없습니다.'}, status=status.HTTP_200_OK)
 
+    @action(methods=['get'], detail=False)
+    def check_store(self, request):
+        user = request.user
+        if hasattr(user, 'delivery_policy'):
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
 
 class SocialUserViewSet(ViewSetMixin, SocialLoginView):
     serializer_class = CustomSocialLoginSerializer
