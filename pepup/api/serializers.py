@@ -467,14 +467,19 @@ class StoreLikeSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
 
     class Meta:
-        model = Product
+        model = Like
         fields = ['thumbnails', 'id']
 
     def get_thumbnails(self, obj):
-        thumbnails = obj.prodthumbnail_set.first()
+        thumbnails = obj.product.prodthumbnail_set.first()
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails).data
         return {"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
+
+    def get_id(self, obj):
+        if obj.product:
+            return obj.product.id
+        return None
 
 
 class SimpleProfileSerializer(serializers.ModelSerializer):
