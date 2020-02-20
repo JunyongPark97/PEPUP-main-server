@@ -148,7 +148,55 @@ class Like(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     is_liked = models.BooleanField(default=True)
 
-from django.db.models.functions import Round
+
+class Payment(models.Model):
+    STATUS = [
+        (0, '결제대기'),
+        (1, '결제완료'),
+        (2, '결제승인전'),
+        (3, '결제승인중'),
+        (20, '결제취소'),
+        (-20, '결제취소실패'),
+        (-30, '결제취소진행중'),
+        (-1, '오류로 인한 결제실패'),
+        (-2, '결제승인실패')
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
+    receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
+    status = models.IntegerField(choices=STATUS, verbose_name='결제상태', default=0)
+
+    price = models.IntegerField(verbose_name='결제금액', null=True)
+    name = models.CharField(max_length=100, verbose_name='대표상품명')
+    tax_free = models.IntegerField(verbose_name='면세금액', null=True)
+    remain_price = models.IntegerField(verbose_name='남은금액', null=True)
+    remain_tax_free = models.IntegerField(verbose_name='남은면세금액',null=True)
+    cancelled_price = models.IntegerField(verbose_name='취소금액', null=True)
+    cancelled_tax_free = models.IntegerField(verbose_name='취소면세금액', null=True)
+    pg = models.TextField(default='inicis', verbose_name='pg사')
+    method = models.TextField(verbose_name='결제수단')
+    payment_data = models.TextField(verbose_name='raw데이터')
+    requested_at = models.DateTimeField(blank=True, null=True)
+    purchased_at = models.DateTimeField(blank=True, null=True)
+    revoked_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        if self.name:
+            return self.name
+        else:
+            return
+
+# todo: payment on delete -> setnull
+class Deal(models.Model):  # 돈 관련 (스토어 별로)
+    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
+    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
+    payment = models.ForeignKey(Payment, null=True, on_delete=models.CASCADE)
+    total = models.IntegerField(verbose_name='결제금액')
+    remain = models.IntegerField(verbose_name='잔여금')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
+    delivery_charge = models.IntegerField(verbose_name='배송비')
+
+
+# todo: payment on delete -> setnull
 class Delivery(models.Model):
     STEP0 = 'step0'
     STEP1 = 'step1'
@@ -187,58 +235,16 @@ class Delivery(models.Model):
         ('99', '롯데택배 해외특송')
     ]  # 택배사코드
 
+    deal = models.OneToOneField(Deal, null=True, on_delete=models.CASCADE)
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sender')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='receiver')
     address = models.TextField(verbose_name='배송지')
     memo = models.TextField(default='', verbose_name='배송메모')
     mountain = models.BooleanField(verbose_name='산간지역유무', default=False)
 
-    state = models.TextField(choices=states)
+    state = models.TextField(choices=states,default='step0')
     code = models.TextField(choices=codes, verbose_name='택배사코드')
     number = models.TextField(verbose_name='운송장번호')
-
-
-
-class Payment(models.Model):
-    STATUS = [
-        (0, '결제대기'),
-        (1, '결제완료'),
-        (2, '결제승인전'),
-        (3, '결제승인중'),
-        (20, '결제취소'),
-        (-20, '결제취소실패'),
-        (-30, '결제취소진행중'),
-        (-1, '오류로 인한 결제실패'),
-        (-2, '결제승인실패')
-    ]
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
-    receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
-    status = models.IntegerField(choices=STATUS, verbose_name='결제상태', default=0)
-
-    price = models.IntegerField(verbose_name='결제금액')
-    name = models.CharField(max_length=100, verbose_name='대표상품명')
-    tax_free = models.IntegerField(verbose_name='면세금액')
-    remain_price = models.IntegerField(verbose_name='남은금액')
-    remain_tax_free = models.IntegerField(verbose_name='남은면세금액')
-    cancelled_price = models.IntegerField(verbose_name='취소금액')
-    cancelled_tax_free = models.IntegerField(verbose_name='취소면세금액')
-    pg = models.TextField(blank=True, null=True, verbose_name='pg사')
-    method = models.TextField(verbose_name='결제수단')
-    payment_data = models.TextField(verbose_name='raw데이터')
-    requested_at = models.DateTimeField(blank=True, null=True)
-    purchased_at = models.DateTimeField(blank=True, null=True)
-    revoked_at = models.DateTimeField(blank=True, null=True)
-
-
-class Deal(models.Model):  # 돈 관련 (스토어 별로)
-    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
-    payment = models.ForeignKey(Payment, null=True, on_delete=models.CASCADE)
-    total = models.IntegerField(verbose_name='결제금액')
-    remain = models.IntegerField(verbose_name='잔여금')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
-    delivery_charge = models.IntegerField(verbose_name='배송비')
-    delivery = models.OneToOneField(Delivery, on_delete=models.CASCADE)
 
 
 class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
@@ -255,7 +261,7 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
         (-20, '환불반려'),
     ]
 
-    deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.CASCADE)
+    deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.SET_NULL)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_buyer')

@@ -36,6 +36,7 @@ SECONDS_APPS = [
     'api',
     'notice',
     'landing',
+    'payment',
 ]
 
 # package
