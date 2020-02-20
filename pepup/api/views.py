@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404, render
 from django.db.models import Q as q
 from django.db import transaction
 from django.db.models import IntegerField, Value, Case, When, Prefetch
+from django.db.models.functions import Ceil
 from .loader import load_credential
 from django.contrib.auth import logout
 # model
@@ -25,7 +26,7 @@ from accounts.models import User, Profile, StoreAccount, DeliveryPolicy
 from .models import (Product, ProdThumbnail, Payment,
                      Brand, Trade, Like, Follow,
                      Tag, Deal, Delivery, FirstCategory, SecondCategory, Size, GenderDivision, ProdImage)
-
+from payment.models import Commission
 
 # serializer
 from .serializers import (
@@ -35,11 +36,13 @@ from .serializers import (
     MainSerializer,
     LikeSerializer,
     FollowSerializer,
-    PayFormSerializer,
+    PayformSerializer,
     SearchResultSerializer, DeliveryPolicySerializer, RelatedProductSerializer, FollowingSerializer,
     StoreProductSerializer, StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
     GenderSerializer, TagSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer,
-    SimpleProfileSerializer, StoreReviewSerializer, DeliveryPolicyWriteSerializer)
+    SimpleProfileSerializer, StoreReviewSerializer, DeliveryPolicyWriteSerializer,
+    PaymentDoneSerialzier, PaymentCancelSerialzier
+)
 
 from accounts.serializers import UserSerializer
 
@@ -688,6 +691,7 @@ class TradeViewSet(viewsets.GenericViewSet):
         self.buyer = request.user
         self.trades = Trade.objects\
             .select_related('seller', 'seller__profile')\
+            .select_related('seller__delivery_policy')\
             .select_related('product', 'product__size', 'product__size__category', 'product__brand', 'product__second_category')\
             .prefetch_related('product__prodthumbnail_set__product')\
             .filter(buyer=self.buyer, status=1)
@@ -718,21 +722,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
     serializer_class = TradeSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_access_token(self):
-        bootpay = BootpayApi(application_id=load_credential("application_id"), private_key=load_credential("private_key"))
-        result = bootpay.get_access_token()
-        if result['status'] is 200:
-            return bootpay
-
     def check_trades(self):
         """
         1. filter된 trades들의 pk list가 request받은 pk와 같은 지 확인
-        2. sold 되었는지 확인
         """
-
-        if not list(self.trades.values_list('pk', flat=True)) == self.request.data.get('trades'):
+        if not list(self.trades.values_list('pk', flat=True)) == self.trades_id:
             raise exceptions.NotAcceptable(detail='요청한 trade의 정보가 없거나, 잘못된 유저로 요청하였습니다.')
 
+    def check_sold(self):
         sold_products = self.trades.filter(product__sold=True)
         if sold_products:
             sold_products.delete()
@@ -740,63 +737,120 @@ class PaymentViewSet(viewsets.GenericViewSet):
 
     def create_payment(self):
         self.payment = Payment.objects.create(user=self.request.user)
-        self.deals.update(payment=self.payment)
+
+    def get_deal_total_and_delivery_charge(self, seller, trades):
+        """
+        :param seller:
+        :param trades:
+        :return: (total, remain, delivery_charge)
+        """
+        commission_rate = Commission.objects.last().rate
+        if self.serializer.data['mountain']:
+            delivery_charge = seller.delivery_policy.mountain
+        else:
+            delivery_charge = 0
+        volume = trades.count()
+        total_discounted_price = trades.aggregate(
+            total_discounted_price=Sum(
+                Ceil((F('product__price')*(1-F('product__discount_rate')))/100)*100,
+                output_field=IntegerField()
+            )
+        )['total_discounted_price']
+        if volume < seller.delivery_policy.volume and total_discounted_price < seller.delivery_policy.amount:
+            delivery_charge += seller.delivery_policy.general
+        return (
+            total_discounted_price + delivery_charge,
+            total_discounted_price * (1 - commission_rate) + delivery_charge,
+            delivery_charge
+        )
 
     def create_deals(self):
-        bulk_list_deals = []
         bulk_list_delivery = []
         for seller_id in self.trades.values_list('seller', flat=True).distinct():
             trades_groupby_seller = self.trades.filter(seller_id=seller_id)
             seller = trades_groupby_seller.first().seller
-            delivery = Delivery(
-                sender=seller,
-                receiver=self.request.user,
-                address=self.request.data.get('address'),
-                memo=self.request.data.get('memo'),
-                mountain=self.request.data.get('mountain'),
-                state='step1'
-            )
-            bulk_list_delivery.append(delivery)
-            total = 10000
-            delivery_charge = 2500
-            bulk_list_deals.append(Deal(
+            total, remain, delivery_charge = self.get_deal_total_and_delivery_charge(seller, trades_groupby_seller)
+            deal = Deal.objects.create(
                 buyer=self.request.user,
                 seller=seller,
                 total=total,
-                remain=total,
-                delivery=delivery,
-                delivery_charge=delivery_charge
+                remain=remain,
+                delivery_charge=delivery_charge,
+                payment=self.payment
+            )
+            bulk_list_delivery.append(Delivery(
+                sender=seller,
+                receiver=self.request.user,
+                address=self.serializer.data['memo'],
+                memo=self.serializer.data['memo'],
+                mountain=self.serializer.data['mountain'],
+                state='step0',
+                deal=deal
             ))
+            trades_groupby_seller.update(deal=deal)
+        # payment의 price
+        total_sum = self.payment.deal_set.aggregate(total_sum=Sum('total'))['total_sum']
+        if not total_sum == int(self.request.data.get('price')):
+            raise exceptions.NotAcceptable(detail='가격을 확인해주시길 바랍니다.')
+        self.payment.price = total_sum
+        if self.payment.deal_set.count() > 1:
+            self.payment.name = self.trades.first().product.name + ' 외 ' + str(self.payment.deal_set.count()-1) + '건'
+        else:
+            self.payment.name = self.trades.first().product.name
+        self.payment.save()
         Delivery.objects.bulk_create(bulk_list_delivery)
-        self.deals = Deal.objects.bulk_create(bulk_list_deals)
 
     @transaction.atomic
     @action(methods=['post'], detail=False, serializer_class=GetPayFormSerializer)
     def get_payform(self, request):
         """
         method: POST
-        :param request: price, trade list,
+        :param request: trades, price, address, memo, mountain, application
         :return: code, status and result
         """
         self.request = request
+        self.serializer = self.get_serializer(data=request.data)
+        if not self.serializer.is_valid():
+            raise exceptions.NotAcceptable(detail='request body is not validated')
+        self.trades_id = list(map(int, request.data.getlist('trades')))
         self.trades = self.get_queryset()\
             .select_related('product')\
             .select_related('seller', 'seller__delivery_policy')\
-            .filter(pk__in=request.data.get('trades'), buyer=request.user)
+            .filter(pk__in=self.trades_id, buyer=request.user)
         self.check_trades()
-        self.create_deals()
+        self.check_sold()
         self.create_payment()
-        return Response({})
+        self.create_deals()
+        serializer = PayformSerializer(self.payment, context={
+            'addr': self.request.data.get('address'),
+            'application_id': request.data.get('application_id')
+        })
+        return Response({'results': {'payform':serializer.data, 'payment_id':self.payment.id}}, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def confirm(self, request):
         """
         method: POST
-        :param request:
+        :param request: payment_id, receipt_id
         :return: code and status
         """
-        return
+        payment = Payment.objects.get(pk=request.data.get('payment_id'))
+        payment.receipt_id = request.data.get('receipt_id')
+        payment.save()
+        if Product.objects.filter(trade__deal__payment=payment, sold=True):
+            raise exceptions.NotAcceptable(detail='판매된 제품입니다.')
+        return Response(status=status.HTTP_200_OK)
 
+    def get_access_token(self):
+        bootpay = BootpayApi(application_id=load_credential("application_id"), private_key=load_credential("private_key"))
+        result = bootpay.get_access_token()
+        if result['status'] is 200:
+            return bootpay
+        else:
+            print(result)
+            raise exceptions.APIException(detail='bootpay access token 확인바람')
+
+    @transaction.atomic
     @action(methods=['post'], detail=False)
     def done(self, request):
         """
@@ -804,146 +858,44 @@ class PaymentViewSet(viewsets.GenericViewSet):
         :param request:
         :return: status, code
         """
-        return
+        receipt_id = request.data.get('receipt_id')
+        order_id = request.data.get('order_id')
 
-    def canceled(self, request):
-        pass
+        # todo: receipt_id와 order_id로 payment를 못 찾을 시 payment와 trades의 status를 조정할 알고리즘 필요
+        # todo: front에서 제대로 값만 잘주면 문제될 것은 없지만,
+        # todo: https://docs.bootpay.co.kr/deep/submit 해당 링크를 보고 서버사이드 결제승인으로 바꿀 필요성 있음
+        if not (receipt_id or order_id):
+            raise exceptions.NotAcceptable(detail='request body is not validated')
+        try:
+            payment = Payment.objects.get(id=order_id)
+        except Payment.DoesNotExist:
+            raise exceptions.NotFound(detail='해당 order_id의 payment가 존재하지 않습니다.')
+
+        bootpay = self.get_access_token()
+        result = bootpay.verify(receipt_id)
+        if result['status'] == 200:
+            if payment.price == result['data']['price']:
+                serializer = PaymentDoneSerialzier(payment, data=result['data'])
+                if serializer.is_valid():
+                    serializer.save()
+                    products = Product.objects.filter(trade__deal__payment=payment)
+                    products.update(sold=True)
+                    trades = Trade.objects.filter(deal__payment=payment)
+                    trades.update(status=2)
+                    return Response(status.HTTP_200_OK)
+        else:
+            result = bootpay.cancel('receipt_id')
+            serializer = PaymentCancelSerialzier(payment, data=result['data'])
+            if serializer.is_valid():
+                serializer.save()
+                Trade.objects.filter(deal__payment=payment).update(status=-3)
+                return Response({'detail': 'canceled'}, status=status.HTTP_200_OK)
+
+        # todo: http stateless 특성상 데이터 집계가 될수 없을 수도 있어서 서버사이드랜더링으로 고쳐야 함...
+        return Response({'detail': ''}, status=status.HTTP_200_OK)
 
     def error(self, request):
         pass
-
-    # def is_valid_products(self):
-    #     solded_products = self.products.filter(sold=True)
-    #     if solded_products:
-    #         self.trades.filter(product__in=solded_products).delete()
-    #         self.response = Response({'code': -1, 'result': '재고가 없습니다.'})
-    #         return False
-    #     return True
-    #
-    # def create_payment(self):
-    #     self.payment = Payment.objects.create(
-    #         status=0,
-    #         user=self.user,
-    #     )
-    #
-    # def update_payment(self):
-    #     self.payment = Payment.objects.get(order_id=self.request.data['order_id'])
-    #     bootpay = self.get_access_token()
-    #     receipt_id = self.request.data['receipt_id']
-    #     info_result = bootpay.verify(receipt_id)
-    #     if info_result['status'] is 200:
-    #         info_result['data']
-    #
-    # def _get_payform(self):
-    #     self.trades = Trade.objects.filter(pk__in=self.request.data.getlist('trades'))
-    #     if len(self.trades) == 0:
-    #         self.response = Response({'code': -2, 'result': "데이터가 없습니다."},status=status.HTTP_404_NOT_FOUND)
-    #         return False
-    #     if len(self.trades) == 1:
-    #         self.name = self.trades[0].product.name
-    #     else:
-    #         self.name = self.trades[0].product.name + ' 외 ' + str(len(self.trades) - 1) + '건'
-    #     self.products = Product.objects.filter(trade__in=self.trades)
-    #     self.create_payment()
-    #     self.payform = PayFormSerializer(
-    #         data=self.request.data,
-    #         context={'name': self.name,
-    #                  'products': self.products,
-    #                  'user': self.user,
-    #                  'order_id': self.payment.order_id}
-    #     )
-    #     return True
-    #
-    # @action(methods=['post'], detail=False)
-    # def get_payform(self, request):
-    #     """
-    #     method: POST
-    #     :param request:
-    #     :return: code, status and result
-    #     """
-    #     self.request = request
-    #     self.user = request.user
-    #     if not self._get_payform():
-    #         return self.response    # set self.payform
-    #     if not self.is_valid_products():
-    #         return self.response
-    #     if self.payform.is_valid():
-    #         return Response({'code': 1, 'result': self.payform.data})
-    #     return Response(self.payform.errors)
-    #
-    # def set_address(self):
-    #     if hasattr(self.request.data, 'address'):
-    #         self.address = self.request.data['address']
-    #     else:
-    #         self.address = get_object_or_404(Profile, user=self.user).address1
-    #
-    # def create_delivery(self, seller):
-    #     self.delivery = Delivery.objects.create(
-    #         sender=seller,
-    #         receiver=self.user,
-    #         address=self.address,
-    #         state='STEP0',
-    #         number=None,
-    #         mountain=self.request.data['mountain']
-    #     )
-    #
-    # def link_deal(self):
-    #     for deal in self.request.data.getlist('deal'):  # 1 item = 1 deal
-    #         self.create_delivery(deal['seller'])
-    #         self.deal = Deal.objects.create(
-    #             seller=deal['seller'],
-    #             buyer=self.user,
-    #             payment=self.payment,
-    #             total=deal['total'],
-    #             remain=deal['total'],
-    #             delivery=self.delivery
-    #         )
-    #         # link deal to payment, and trades to deal
-    #         self.payment.deal_set.add(deal)
-    #         for trade in self.deal['trades']:
-    #             trade = Trade.objects.get(pk=trade)
-    #             self.deal.trade_set.add(trade)
-    #
-    # @action(methods=['post'], detail=False)
-    # def confirm(self, request):
-    #     """
-    #     method: POST
-    #     :param request:
-    #     :return: code and status
-    #     """
-    #     self.products = Product.objects.filter(pk__in=request.data.getlist('products'))
-    #     if not self.is_valid_products():
-    #         self.create_payment()
-    #         return self.response
-    #     return Response({"code": -1}, status=status.HTTP_200_OK)
-    #
-    # @action(methods=['post'], detail=False)
-    # def done(self, request):
-    #     """
-    #     method: POST
-    #     :param request:
-    #     :return: status, code
-    #     """
-    #     # request = {receipt_id, address, deal:[{seller, trades, total, delivery_charge}]}
-    #     self.request = request
-    #     self.user = get_user(self.request)
-    #     self.set_address()
-    #     self.update_payment()
-    #     self.link_deal()
-    #
-    #     trades = Trade.objects.filter(pk__in=request.data.getlist('trades'))
-    #     products = Product.objects.filter(trades__in=trades)
-    #     if self.is_valid_products():
-    #         products.update(sold=True)
-    #         trades.update(status=2)
-    #         return Response({"code": 3}, status=status.HTTP_200_OK)
-    #     return Response({"code": -1}, status=status.HTTP_200_OK)
-    #
-    # def canceled(self, request):
-    #     pass
-    #
-    # def error(self, request):
-    #     pass
 
 
 class PayInfo(APIView):

@@ -5,7 +5,9 @@ from django.db.models import Avg
 from accounts.models import User, DeliveryPolicy, StoreAccount
 from accounts.serializers import UserSerializer, ThumbnailSerializer
 from .models import (Product, Brand, Trade, ProdThumbnail,
-                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage, Review)
+                     Like, Follow, Deal, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage,
+                     Payment, Review)
+from api.loader import load_credential
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -287,11 +289,14 @@ class ProductForTradeSerializer(serializers.ModelSerializer):
         return ProdThumbnailSerializer(thumbnails).data
 
     def get_size(self, obj):
-        if obj.size.size_max:
-            return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
-        if obj.size.category.name == 'SHOES':
-            return "{}(cm)".format(obj.size.size)
-        return "{}({})".format(obj.size.size_name, obj.size.size)
+        if hasattr(obj.size, 'size_max'):
+            if obj.size.size_max:
+                return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
+            if obj.size.category.name == 'SHOES':
+                return "{}(cm)".format(obj.size.size)
+        if hasattr(obj.size,'size_name'):
+            return "{}({})".format(obj.size.size_name, obj.size.size)
+        return ""
 
     def get_discounted_price(self,obj):
         return obj.discounted_price
@@ -326,20 +331,6 @@ class FilterSerializer(serializers.Serializer):
     on_sale = serializers.BooleanField(default=False)
 
 
-class ItemSerializer(serializers.ModelSerializer):
-    item_name = serializers.CharField(source='name')
-    unique = serializers.CharField(source='pk')
-    price = serializers.SerializerMethodField('get_discount_price')
-    qty = serializers.IntegerField(default=1)
-
-    class Meta:
-        model = Product
-        fields = ('item_name','unique', 'price','qty')
-
-    def get_discount_price(self, obj):
-        return obj.price * (1-obj.discount_rate)
-
-
 class UserinfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='nickname')
     addr = serializers.CharField(default='')
@@ -347,31 +338,6 @@ class UserinfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'addr', 'email', 'phone')
-
-
-class PayFormSerializer(serializers.Serializer):
-    price = serializers.IntegerField()
-    application_id = serializers.CharField(default="5e05af1302f57e00219c40da")
-    name = serializers.SerializerMethodField()
-    pg = serializers.CharField(default='inicis')
-    method = serializers.CharField(default='')
-    items = serializers.SerializerMethodField()
-    user_info = serializers.SerializerMethodField()
-    order_id = serializers.SerializerMethodField()
-
-    def get_name(self, obj):
-        return self.context.get('name')
-
-    def get_items(self, obj):
-        items = self.context.get('products')
-        return ItemSerializer(items, many=True).data
-
-    def get_user_info(self, obj):
-        user_info = self.context.get('user')
-        return UserinfoSerializer(user_info).data
-
-    def get_order_id(self, obj):
-        return {'order_id':self.context.get('order_id')}
 
 
 class DealSerializer(serializers.ModelSerializer):
@@ -511,6 +477,7 @@ class StoreLikeSerializer(serializers.ModelSerializer):
             return ProdThumbnailSerializer(thumbnails).data
         return {"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
 
+
     def get_id(self, obj):
         if obj.product:
             return obj.product.id
@@ -559,14 +526,6 @@ class StoreReviewSerializer(serializers.ModelSerializer):
              return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
 
 
-class GetPayFormSerializer(serializers.Serializer):
-    trades = serializers.ListField()
-    price = serializers.IntegerField()
-    address = serializers.CharField()
-    memo = serializers.CharField()
-    mountain = serializers.BooleanField()
-
-
 class ReviewCreateSerializer(serializers.ModelSerializer):
     buyer = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
@@ -602,3 +561,81 @@ class DeliveryPolicyWriteSerializer(serializers.ModelSerializer):
 
         # Done!
         return delivery_policy
+
+class GetPayFormSerializer(serializers.Serializer):
+    trades = serializers.ListField()
+    price = serializers.IntegerField()
+    address = serializers.CharField()
+    memo = serializers.CharField(allow_blank=True)
+    mountain = serializers.BooleanField(default=False)
+    application_id = serializers.IntegerField() # 1: web 2:android 3:ios
+
+
+class ItemSerializer(serializers.ModelSerializer):
+    item_name = serializers.SerializerMethodField()
+    unique = serializers.CharField(source='pk')
+    price = serializers.IntegerField(source='total')
+    qty = serializers.IntegerField(default=1)
+
+    class Meta:
+        model = Deal
+        fields = ('item_name', 'unique', 'price', 'qty')
+
+    def get_item_name(self, obj):
+        return obj.seller.email
+
+
+class PayformSerializer(serializers.ModelSerializer):
+    application_id = serializers.CharField(default=load_credential('application_id_web'))
+    order_id = serializers.IntegerField(source='id')
+    items = serializers.SerializerMethodField()
+    user_info = serializers.SerializerMethodField()
+    pg = serializers.CharField(default='inicis')
+    method = serializers.CharField(default='')
+
+    class Meta:
+        model = Payment
+        fields = ['price', 'application_id', 'name', 'pg', 'method', 'items', 'user_info', 'order_id']
+
+    def get_items(self, obj):
+        return ItemSerializer(obj.deal_set.all(), many=True).data
+
+    def get_user_info(self, obj):
+        return {
+            'username': obj.user.nickname,
+            'email': obj.user.email,
+            'addr': self.context.get('addr'),
+            'phone': obj.user.phone
+        }
+
+    def get_application_id(self,obj):
+        if self.context.get('application_id') == 1:
+            return load_credential('application_id_web')
+        elif self.context.get('application_id') == 2:
+            return load_credential('application_id_android')
+        elif self.context.get('application_id') == 3:
+            return load_credential('application_id_ios')
+        else:
+            return ""
+
+
+
+class PaymentDoneSerialzier(serializers.ModelSerializer):
+
+    class Meta:
+        model = Payment
+        fields = [
+            'receipt_id','remain_price', 'tax_free', 'remain_tax_free',
+            'cancelled_price', 'cancelled_tax_free',
+            'requested_at', 'purchased_at', 'status'
+        ]
+
+
+class PaymentCancelSerialzier(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = [
+            'receipt_id', 'remain_price', 'remain_tax_free',
+            'cancelled_price', 'cancelled_tax_free',
+            'revoked_at', 'status'
+        ]
