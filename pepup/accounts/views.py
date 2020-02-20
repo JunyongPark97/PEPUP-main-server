@@ -232,7 +232,7 @@ class AccountViewSet(viewsets.GenericViewSet):
             if phoneconfirm.key == self.request.data['confirm_key']:
                 phoneconfirm.is_confirmed = True
                 phoneconfirm.save()
-                if not hasattr(self.user, 'email'):
+                if not self.user.email:
                     self.response = Response({'code': 1, "status": _("Successfully_confirmed")},
                                              status=status.HTTP_200_OK)
                 else:
