@@ -12,12 +12,12 @@
         $.ajaxSetup({
             headers: {"Authorization": "Token f32aab65e009f2c4614d7396ea878a0ad4fdf163"}
         });
-        var trades = [12];
+        var trades = [12,18];
         jQuery.ajaxSettings.traditional = true;
         $.ajax({
             type: 'POST',
             url: '/api/payment/get_payform/',
-            data: {"trades": trades, 'price': 12800+3000, 'address':'서울시 관악구', 'memo':'', 'application_id':1},
+            data: {"trades": trades, 'price': 76800, 'address':'서울시 관악구', 'memo':'', 'application_id':1},
             async: false,
             traditional : true,
             success: function (data) {
@@ -27,7 +27,7 @@
                 } else if (data['code'] ==-2){
                     alert('데이터가 없습니다.')
                 } else {
-                    var payment_id = data['results']['payment_id']
+                    var order_id = data['results']['order_id']
                     BootPay.request(
                         data['results']['payform']
                     ).error(function (data) {
@@ -46,7 +46,7 @@
                         $.ajax({
                             type: 'POST',
                             url: '/api/payment/confirm/',
-                            data: {'payment_id':payment_id,'receipt_id':data['receipt_id']},
+                            data: {'order_id':order_id,'receipt_id':data['receipt_id']},
                             async: false,
                             success: function (data) {
                               console.log(data);

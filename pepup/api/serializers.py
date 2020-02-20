@@ -465,6 +465,7 @@ class StoreSerializer(serializers.ModelSerializer):
 
 class StoreLikeSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Like
@@ -584,7 +585,7 @@ class ItemSerializer(serializers.ModelSerializer):
 
 
 class PayformSerializer(serializers.ModelSerializer):
-    application_id = serializers.CharField(default=load_credential('application_id_web'))
+    application_id = serializers.SerializerMethodField()
     order_id = serializers.IntegerField(source='id')
     items = serializers.SerializerMethodField()
     user_info = serializers.SerializerMethodField()
@@ -607,11 +608,11 @@ class PayformSerializer(serializers.ModelSerializer):
         }
 
     def get_application_id(self,obj):
-        if self.context.get('application_id') == 1:
+        if self.context.get('application_id') == '1':
             return load_credential('application_id_web')
-        elif self.context.get('application_id') == 2:
+        elif self.context.get('application_id') == '2':
             return load_credential('application_id_android')
-        elif self.context.get('application_id') == 3:
+        elif self.context.get('application_id') == '3':
             return load_credential('application_id_ios')
         else:
             return ""
@@ -623,7 +624,7 @@ class PaymentDoneSerialzier(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = [
-            'receipt_id','remain_price', 'tax_free', 'remain_tax_free',
+            'remain_price', 'tax_free', 'remain_tax_free',
             'cancelled_price', 'cancelled_tax_free',
             'requested_at', 'purchased_at', 'status'
         ]
@@ -633,7 +634,7 @@ class PaymentCancelSerialzier(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = [
-            'receipt_id', 'remain_price', 'remain_tax_free',
+            'remain_price', 'remain_tax_free',
             'cancelled_price', 'cancelled_tax_free',
             'revoked_at', 'status'
         ]

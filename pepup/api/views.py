@@ -781,7 +781,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
             bulk_list_delivery.append(Delivery(
                 sender=seller,
                 receiver=self.request.user,
-                address=self.serializer.data['memo'],
+                address=self.serializer.data['address'],
                 memo=self.serializer.data['memo'],
                 mountain=self.serializer.data['mountain'],
                 state='step0',
@@ -805,8 +805,8 @@ class PaymentViewSet(viewsets.GenericViewSet):
     def get_payform(self, request):
         """
         method: POST
-        :param request: trades, price, address, memo, mountain, application
-        :return: code, status and result
+        :param request: trades, price, address, memo, mountain, application_id
+        :return: result {payform}
         """
         self.request = request
         self.serializer = self.get_serializer(data=request.data)
@@ -819,6 +819,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
             .filter(pk__in=self.trades_id, buyer=request.user)
         self.check_trades()
         self.check_sold()
+        # todo: transaction atomic 시작부분
         self.create_payment()
         self.create_deals()
         serializer = PayformSerializer(self.payment, context={
@@ -831,10 +832,10 @@ class PaymentViewSet(viewsets.GenericViewSet):
     def confirm(self, request):
         """
         method: POST
-        :param request: payment_id, receipt_id
+        :param request: order_id, receipt_id
         :return: code and status
         """
-        payment = Payment.objects.get(pk=request.data.get('payment_id'))
+        payment = Payment.objects.get(pk=request.data.get('order_id'))
         payment.receipt_id = request.data.get('receipt_id')
         payment.save()
         if Product.objects.filter(trade__deal__payment=payment, sold=True):
@@ -855,7 +856,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
     def done(self, request):
         """
         method: POST
-        :param request:
+        :param request: order_id, receipt_d
         :return: status, code
         """
         receipt_id = request.data.get('receipt_id')
@@ -864,6 +865,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # todo: receipt_id와 order_id로 payment를 못 찾을 시 payment와 trades의 status를 조정할 알고리즘 필요
         # todo: front에서 제대로 값만 잘주면 문제될 것은 없지만,
         # todo: https://docs.bootpay.co.kr/deep/submit 해당 링크를 보고 서버사이드 결제승인으로 바꿀 필요성 있음
+        # todo: https://github.com/bootpay/server_python/blob/master/lib/BootpayApi.py 맨 밑줄
         if not (receipt_id or order_id):
             raise exceptions.NotAcceptable(detail='request body is not validated')
         try:
@@ -878,8 +880,10 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 serializer = PaymentDoneSerialzier(payment, data=result['data'])
                 if serializer.is_valid():
                     serializer.save()
+                    # 관련 상품 sold처리
                     products = Product.objects.filter(trade__deal__payment=payment)
                     products.update(sold=True)
+                    # 하위 trade 2번처리 : 결제완료
                     trades = Trade.objects.filter(deal__payment=payment)
                     trades.update(status=2)
                     return Response(status.HTTP_200_OK)
