@@ -815,20 +815,24 @@ class PaymentViewSet(viewsets.GenericViewSet):
         :param trades:
         :return: (total, remain, delivery_charge)
         """
-        commission_rate = Commission.objects.last().rate
-        if self.serializer.data['mountain']:
-            delivery_charge = seller.delivery_policy.mountain
-        else:
-            delivery_charge = 0
-        volume = trades.count()
+        commission_rate = Commission.objects.last().rate # admin에서 처리
+
         total_discounted_price = trades.aggregate(
             total_discounted_price=Sum(
-                Ceil((F('product__price')*(1-F('product__discount_rate')))/100)*100,
+                Ceil((F('product__price') * (1 - F('product__discount_rate'))) / 100) * 100,
                 output_field=IntegerField()
             )
         )['total_discounted_price']
-        if volume < seller.delivery_policy.volume and total_discounted_price < seller.delivery_policy.amount:
-            delivery_charge += seller.delivery_policy.general
+
+        if self.serializer.data['mountain']:
+            delivery_charge = seller.delivery_policy.mountain
+        else:
+            volume = trades.count()
+            if volume < seller.delivery_policy.volume and total_discounted_price < seller.delivery_policy.amount:
+                delivery_charge = seller.delivery_policy.general
+            else:
+                delivery_charge = 0
+
         return (
             total_discounted_price + delivery_charge,
             total_discounted_price * (1 - commission_rate) + delivery_charge,
@@ -894,7 +898,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         self.create_payment()
         self.create_deals()
         serializer = PayformSerializer(self.payment, context={
-            'addr': self.request.data.get('address'),
+            'addr': request.data.get('address'),
             'application_id': request.data.get('application_id')
         })
         return Response({'results': {'payform':serializer.data, 'payment_id':self.payment.id}}, status=status.HTTP_200_OK)
@@ -919,7 +923,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         if result['status'] is 200:
             return bootpay
         else:
-            print(result)
             raise exceptions.APIException(detail='bootpay access token 확인바람')
 
     @transaction.atomic

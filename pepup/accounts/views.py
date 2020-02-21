@@ -596,6 +596,7 @@ class CustomKakaoOAuth2Adapter(KakaoOAuth2Adapter):
         headers = {'Authorization': 'Bearer {0}'.format(token.token)}
         resp = requests.get(self.profile_url, headers=headers)
         extra_data = resp.json()
+        # create를 위해 제가 추가한 것
         self.extra_data = extra_data
         return self.get_provider().sociallogin_from_response(request,
                                                              extra_data)

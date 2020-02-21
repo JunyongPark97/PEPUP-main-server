@@ -40,7 +40,10 @@ class CustomSocialLoginSerializer(serializers.Serializer):
         """
         request = self._get_request()
         social_login = adapter.complete_login(request, app, token, response=response)
+
+        # create 위해 추가한 부분
         self.extra_data = adapter.extra_data
+
         social_login.token = token
         return social_login
 
