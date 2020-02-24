@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Chat Rooms</title>
+</head>
+
+<body>
+  What chat room would you like to create?<br/>
+  <select id="room-name-input">
+  {% for user in users %}
+    <option value="{{user.pk}}">{{user.pk}}: {{user.nickname}}</option>
+  {% endfor %}
+  </select>
+  <input id="room-name-submit" type="button" value="Enter"/>
+  <ul>
+    {% for room in rooms %}
+    <li><a href="/api/chat/testroom/{{ room.pk }}/">{{ room.pk }} : {{room.user.first.nickname}} with {{room.user.last.nickname}}</a></li>
+    {% endfor %}
+  </ul>
+  <script>
+    document.querySelector('#room-name-input').focus();
+    document.querySelector('#room-name-input').onkeyup = function (e) {
+      if (e.keyCode === 13) {  // enter, return
+        document.querySelector('#room-name-submit').click();
+      }
+    };
+
+    document.querySelector('#room-name-submit').onclick = function (e) {
+      var userpk = document.querySelector('#room-name-input').value;
+      window.location.pathname = 'api/chat/testroom/' + userpk + '/';
+    };
+  </script>
+</body>
+</html>

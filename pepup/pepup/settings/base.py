@@ -21,6 +21,9 @@ BASE_DIR = os.path.dirname(PROJECT_DIR)
 # Application definition
 
 INSTALLED_APPS = [
+    # 'channels',
+    'channels',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.sites',
@@ -37,6 +40,7 @@ SECONDS_APPS = [
     'notice',
     'landing',
     'payment',
+    'chat',
 ]
 
 # package
@@ -57,7 +61,7 @@ THIRD_APPS = [
 
     'storages',
 
-    # 'channels',
+
 
     'corsheaders',
     
@@ -105,6 +109,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'pepup.wsgi.application'
+
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -241,3 +246,13 @@ APPEND_SLASH = False
 
 # toolbar
 INTERNAL_IPS = ('127.0.0.1',)
+
+ASGI_APPLICATION = 'pepup.routing.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}

@@ -1,6 +1,5 @@
 from pepup.loader import load_credential
 from .base import *
-from ..utils import get_server_info_value
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '^#cq1k#!!rqqa0x7z$7sz%qo$!r6naggu=)tjijn%agaopq!_g'
@@ -34,7 +33,7 @@ DATABASES = {
 # }
 
 
-SETTING_PRD_DIC = get_server_info_value("production")
+SETTING_PRD_DIC = load_credential("production")
 
 # # AWS
 AWS_ACCESS_KEY_ID = SETTING_PRD_DIC['S3']['AWS_ACCESS_KEY_ID']

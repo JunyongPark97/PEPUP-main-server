@@ -28,6 +28,7 @@ urlpatterns = [
     # api
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
+    path('api/chat/', include('chat.urls')),
     path('accounts/', include('accounts.urls')),
 
     path('', include('landing.urls')),
