@@ -1,4 +1,5 @@
 import json
+import uuid
 
 import requests
 from django.db import transaction
@@ -54,6 +55,7 @@ from .Bootpay import BootpayApi
 
 # utils
 from accounts.utils import get_user, get_follower
+from .utils import generate_s3_presigned_post
 
 
 def pay_test(request):
@@ -1281,3 +1283,20 @@ class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
         retrieve
         """
         return super(DeliveryPolicyViewSet, self).retrieve(request, *args, **kwargs)
+
+
+class S3ImageUploadViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated, ]
+
+    @action(methods=['get'], detail=False, permission_classes=[IsAuthenticated, ])
+    def key(self, request):
+        """
+        s3 policy generate
+        """
+        ext = request.GET.get('ext', 'jpg')
+        if ext not in ('jpg', 'mp3', 'mp4'):
+            ext = 'jpg'
+        key = uuid.uuid4()
+        expiry = 60 * 60 * 24
+        data = generate_s3_presigned_post('pepup-storage', key, expiry, ext, )
+        return Response(data)
