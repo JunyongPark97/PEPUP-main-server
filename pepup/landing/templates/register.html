@@ -103,7 +103,7 @@
       // dataType : "application/json",
       // contentType : "application/json",
       success : function(res){
-          {% url 'landing:success' %}
+          window.location.href = {% url 'landing:success' %}
       },
       error:function(){
           window.alert("신청 양식을 올바르게 채워주세요!");
