@@ -10,5 +10,6 @@ app_name = 'landing'
 
 urlpatterns = [
     path('', views.home),
+    path('register/', views.RegisterView.as_view(), name='register'),
     path('', include(router.urls))
 ]

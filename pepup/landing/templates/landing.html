@@ -1,75 +1,260 @@
 <!DOCTYPE html>
-{% load static %}
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
   <title>PEPUP</title>
 
   <!--favicon-->
-  <link rel="apple-touch-icon" sizes="152x152" href="{% static 'img/apple-icon-152x152.png'%}">
-  <link rel="icon" type="image/png" sizes="96x96" href="{% static 'img/favicon-96x96.png'%}">
   <!--bootstrap-->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-  <link rel="stylesheet" href="{% static 'css/landing.css' %}?ver=1.11">
+  <style>
+
+      #wrap {width: 100%;}
+      header { width:1200px; height: 110px; margin : 0 auto; vertical-align: middle;}
+      footer { width : 100%}
+      section { width: 100%;}
+      img { width : 100%;}
+      .visible-mobile{
+        display: none;
+      }
+        /* font */
+      {#@font-face {#}
+      {#    font-family: 'Noto Sans KR';#}
+      {#    font-style: normal;#}
+      {#    font-weight: 100;#}
+      {#    src: url("../static/fonts/NotoSansKR-Thin.woff2") format('woff2'),#}
+      {#    url("../static/fonts/NotoSansKR-Thin.woff") format('woff'),#}
+      {#    url("../static/fonts/NotoSansKR-Thin.otf") format('opentype');#}
+      {#}#}
+      {#@font-face {#}
+      {#    font-family: 'Noto Sans KR';#}
+      {#    font-style: normal;#}
+      {#    font-weight: 300;#}
+      {#    src: url("../static/fonts/NotoSansKR-Light.woff2") format('woff2'),#}
+      {#    url("../static/fonts/NotoSansKR-Light.woff") format('woff'),#}
+      {#    url("../static/fonts/NotoSansKR-Light.otf") format('opentype');#}
+      {#}#}
+      @font-face {
+          font-family: 'Noto Sans KR';
+          font-style: normal;
+          font-weight: 400;
+          src: url("../static/fonts/NotoSansKR-Regular.woff2") format('woff2'),
+          url("../static/fonts/NotoSansKR-Regular.woff") format('woff'),
+          url("../static/fonts/NotoSansKR-Regular.otf") format('opentype');
+      }
+      {#@font-face {#}
+      {#    font-family: 'Noto Sans KR';#}
+      {#    font-style: normal;#}
+      {#    font-weight: 500;#}
+      {#    src: url("../static/fonts/NotoSansKR-Medium.woff2") format('woff2'),#}
+      {#    url("../static/fonts/NotoSansKR-Medium.woff") format('woff'),#}
+      {#    url("../static/fonts/NotoSansKR-Medium.otf") format('opentype');#}
+      {#}#}
+      {#@font-face {#}
+      {#    font-family: 'Noto Sans KR';#}
+      {#    font-style: normal;#}
+      {#    font-weight: 700;#}
+      {#    src: url("../static/fonts/NotoSansKR-Bold.woff2") format('woff2'),#}
+      {#    url("../static/fonts/NotoSansKR-Bold.woff") format('woff'),#}
+      {#    url("../static/fonts/NotoSansKR-Bold.otf") format('opentype');#}
+      {#}#}
+      {#@font-face {#}
+      {#    font-family: 'Noto Sans KR';#}
+      {#    font-style: normal;#}
+      {#    font-weight: 900;#}
+      {#    src: url("../static/fonts/NotoSansKR-Black.woff2") format('woff2'),#}
+      {#    url("../static/fonts/NotoSansKR-Black.woff") format('woff'),#}
+      {#    url("../static/fonts/NotoSansKR-Black.otf") format('opentype');#}
+      {#}#}
+
+      /* */
+      {#@font-face{#}
+      {#    font-family : 'noto-bold';#}
+      {#    src : local('noto-bold'), url("../static/fonts/NotoSansCJKkr-Bold.otf") format('opentype');#}
+      {#}#}
+      {#@font-face{#}
+      {#    font-family : 'noto-regular';#}
+      {#    src : local('noto-regular'), url("../static/fonts/NotoSansCJKkr-Regular.otf") format('opentype');#}
+      {#  }#}
+
+      p {
+        font-family: 'Noto Sans KR';
+        color: black;
+        size: 20px;
+        text-align: center;
+      }
+      #homeBtn {
+          float : right;
+          width: 40px;
+          height: 40px;
+          margin-right: 10px;
+          margin-top: 35px;
+      }
+      #guideBtn{
+          width : 224px;
+          height: 50px;
+          border-radius: 35px;
+          border: solid 2px black;
+          float:right;
+          font-family : 'Noto Sans KR';
+            text-align: center;
+            vertical-align: middle;
+            line-height: 50px;
+        margin-right: 35px;
+        margin-top: 29px;
+        display:inline-block;
+      }
+      #guideBtn p{
+          text-align: center;
+      }
+      #goSheetBtn{
+          position : fixed;
+          right: 10%;
+          bottom : 50px;
+          width:300px;
+          height: 60px;
+          border-radius: 40px;
+          background: black;
+          font-size: 20px;
+          color: white;
+          line-height: 60px;
+          vertical-align: middle;
+          text-align: center;
+          font-family: 'Noto Sans KR';
+      }
+      #goSheetBtn p{
+          color: white;
+      }
+      .container{
+        height:150px; background:#ebebf6;
+      }
+      footer span{
+        font-size:16px; font-family: 'noto-regular';
+      }
+      .footer-section{
+        float: left; margin-top: 40px; margin-left: 12.5%; color: #6b6a6e;
+      }
+      .footer-first{
+        float: left; margin-top: 40px; margin-left: 5%; color: #6b6a6e;
+      }
+
+      @media (max-width: 1220px) and (min-width:960px){
+          header{width:100%;}
+          footer span{
+            font-size: 12px;
+          }
+          .footer-section{
+            font-size: 12px;
+          }
+      }
+      @media (max-width : 960px)and (min-width:768px){
+        header{width:100%}
+        footer span{
+            font-size: 10px;
+          }
+          .footer-section{
+            font-size: 10px;
+          }
+      }
+      @media (max-width: 760px){
+        header{width:100%}
+        #homeBtn{
+          float : right;
+          width: 24px;
+          height: 24px;
+          margin-right: 18px;
+          margin-top: 16px;
+        }
+        #guideBtn{
+          width : 127px;
+          font-size: 12px;
+          height: 24px;
+          border-radius: 25px;
+          border: solid 1.5px black;
+          float:right;
+          font-family : 'noto-bold';
+            text-align: center;
+            vertical-align: middle;
+            line-height: 24px;
+        margin-right: 18px;
+        margin-top: 16px;
+        display:inline-block;
+        }
+        #goSheetBtn{
+          position : fixed;
+          right: 20px;
+          bottom : 20px;
+          width:180px;
+          height: 40px;
+          border-radius: 25px;
+          background: black;
+          font-size: 14px;
+          color: white;
+          line-height: 40px;
+          text-align: center;
+          font-family: 'noto-bold';
+          vertical-align: middle;
+      }
+      .container{
+        height:200px; background:#ebebf6;
+      }
+        footer span{
+            font-size: 8px;
+          }
+          .footer-section{
+            font-size: 8px;
+            margin-top: 20px;
+            margin-left: 5%
+          }
+          .footer-first{
+            margin-top: 10px;
+          }
+          .visible-mobile {
+            display: inline;
+          }
+
+          .hidden-mobile {
+            display: none;
+          }
+      }
+  </style>
+  <script>
+
+  </script>
 </head>
 <body>
 <!--section-->
-  <div class="section">
-    <div class="section1">
-      <div class="container">
-        <p>새로운 빈티지 거래 플랫폼</p>
-        <h2>PEP UP ; 생기를 불어넣다.</h2>
-        <img class="img_landing1" src="{% static 'img/landing1.png' %}">
-      </div>
+    <div id="wrap">
+        <header>
+            <img id = "homeBtn" src="./homesmall.svg">
+            <div id="guideBtn">
+                SELL WITH PEP UP
+            </div>
+        </header>
+        <section>
+            <img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingsmall.jpg" class="visible-mobile"/>
+            <img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingpage.jpg" class="hidden-mobile"/>
+            <div id = "goSheetBtn">
+                대리 판매 신청서 작성
+            </div>
+        </section>
     </div>
-    <div class="section1">
-      <div class="container">
-        <div>
-          <ul>
-            <li><h3><span>귀찮은 건 싫어!</span></h3></li>
-            <li style="flex:0.6">Pep up을 통해 쉽고 빠르게 빈티지 제품을 구매하세요. 인터넷이나 SNS를 뒤질 필요도, 시간 내서 동묘에 갈 필요도 없답니다.</li>
-          </ul>
-          <img class="img_landing2" src="{% static 'img/landing2.png' %}">
-          <ul>
-            <li>
-              <h3>
-                <span>좋은 것만 볼래</span>
-              </h3>
-              <p>Pep up이 당신이 좋아할 만한 상품만 보여줄게요. 당신의 취향을 한방에 저격할 상품들을 큐레이션 해드립니다.</p>
-            </li>
-            <li></li>
-            <li><h3><span>버리긴 아까운데..</span></h3>
-              <p>당신의 옷장에서 잠자고 있는 옷을 팔아보세요. 돈도 벌고, 환경도 지킬 수 있는 절호의 기회!</p>
-            </li>
-          </ul>
+    <!--footer-->
+  <footer>
+        <div class="container">
+          <div class="footer-first">
+            <span style="font-size: 20px; font-family: 'Noto Sans KR';">주식회사 몽데이크</span>
+            <br/>
+            <span>Copyright 2020 Mondeique. All rights reserved.</span>
+          </div>
+          <div class="footer-section">
+            <span style="font-family: 'Noto Sans KR';">주소</span> 서울시 마포구 연희로 11 5층 S-541호<br/>
+            <span style="font-family: 'noto-bold';">대표</span> 박준용, 이상우<br/>
+            <span style="font-family: 'noto-bold';">사업자등록번호</span> 789-81-01945<br/>
+            <span style="font-family: 'noto-bold';">이메일</span> support@mondeique.com
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="section2">
-      <div class="container">
-        <div>
-          <h3>PEP UP</h3>
-          <h3>COMING SOON</h3>
-          <br/>
-          <p>Pep up clothes, Pep youer life up</p>
-        </div>
-      </div>
-    </div>
-  </div>
-<!--footer-->
-  <div class="footer">
-    <div class="container">
-      <ul>
-        <li><span style="font-size: 20px">주식회사 몽데이크</span></li>
-        <li>Copyright 2020 Mondeique. All rights reserved.</li>
-      </ul>
-      <ul>
-        <li><span>주소</span> 서울시 마포구 연희로 11 5층 S-541호</li>
-        <li><span>대표</span> 박준용, 이상우</li>
-        <li><span>사업자등록번호</span> 789-81-01945</li>
-        <li><span>이메일</span> support@mondeique.com</li>
-      </ul>
-    </div>
-  </div>
+  </footer>
+
 </body>
 </html>

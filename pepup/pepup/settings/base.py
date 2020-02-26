@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(PROJECT_DIR)
 
 INSTALLED_APPS = [
     # 'channels',
-    'channels',
+    # 'channels',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -40,7 +40,7 @@ SECONDS_APPS = [
     'notice',
     'landing',
     'payment',
-    'chat',
+    # 'chat',
 ]
 
 # package
@@ -247,12 +247,12 @@ APPEND_SLASH = False
 # toolbar
 INTERNAL_IPS = ('127.0.0.1',)
 
-ASGI_APPLICATION = 'pepup.routing.application'
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
-        },
-    },
-}
+# ASGI_APPLICATION = 'pepup.routing.application'
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             "hosts": [('127.0.0.1', 6379)],
+#         },
+#     },
+# }
