@@ -1,5 +1,5 @@
 # myproject.myapi.utils.py
-from channels.auth import AuthMiddlewareStack
+# from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 
@@ -8,7 +8,8 @@ import json
 
 
 def get_server_info_value(key: str):
-    with open('./pepup/server_info.json', mode='rt', encoding='utf-8') as file:
+    print('---')
+    with open('./server_info.json', mode='rt', encoding='utf-8') as file:
         data = json.load(file)
         for k, v in data.items():
             if k == key:
@@ -54,4 +55,4 @@ class TokenAuthMiddlewareInstance:
         return await inner(receive, send)
 
 
-TokenAuthMiddlewareStack = lambda inner: TokenAuthMiddleware(AuthMiddlewareStack(inner))
+# TokenAuthMiddlewareStack = lambda inner: TokenAuthMiddleware(AuthMiddlewareStack(inner))
