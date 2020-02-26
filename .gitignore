@@ -4,7 +4,7 @@ migrations/
 server_info.json
 accounts_info.json
 api_info.json
-slack.json
+.slack.json
 static
 settings/__init__.py
 savecategory.py
@@ -207,3 +207,4 @@ Temporary Items
 # Pyre type checker
 
 # End of https://www.gitignore.io/api/macos,python,django
+/pepup/landing/.slack.json

@@ -5,7 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 _secrets = {}
-_secret_path = os.path.join(os.path.dirname(__file__), 'slack.json')
+_secret_path = os.path.join(os.path.dirname(__file__), '.slack.json')
 if os.path.exists(_secret_path):
     with open(_secret_path) as f:
         _secrets = json.loads(f.read())
