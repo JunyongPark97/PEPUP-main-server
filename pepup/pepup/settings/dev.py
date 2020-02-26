@@ -1,4 +1,4 @@
-from pepup.loader import load_credential
+from ..loader import load_credential
 from .base import *
 
 # SECURITY WARNING: keep the secret key used in production secret!

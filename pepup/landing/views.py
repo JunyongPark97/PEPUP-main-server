@@ -1,4 +1,3 @@
-from .forms import RegisterForm
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from rest_framework.permissions import AllowAny
