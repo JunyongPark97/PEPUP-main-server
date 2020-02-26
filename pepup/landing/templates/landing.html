@@ -218,9 +218,7 @@
           }
       }
   </style>
-  <script>
 
-  </script>
 </head>
 <body>
 <!--section-->
@@ -257,4 +255,11 @@
   </footer>
 
 </body>
+<script>
+    $(document).ready(function () {
+        if(window.innerWidth < 768){
+            $(".hidden-mobile").attr('src', 'https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingsmall.jpg')
+        }
+    })
+  </script>
 </html>
