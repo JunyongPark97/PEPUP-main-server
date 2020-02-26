@@ -1,310 +1,127 @@
 <html lang="en">
+{% load static %}
 <head>
-    <meta charset="UTF-8">
-    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <title>PEPUP</title>
-    <style>
-
-        #wrap {width: 100%;}
-        header { width:1200px; height: 110px; margin : 0 auto; vertical-align: middle;}
-        footer { width : 100%}
-        section { width: 1200px; margin : 0 auto;}
-        img { width : 100%;}
-        /* font */
-        @font-face{
-            font-family : noto-bold;
-            src :  url("../static/fonts/NotoSansCJKkr-Bold.otf");
-        }
-        @font-face{
-            font-family : noto-regular;
-            src : url("../static/fonts/NotoSansCJKkr-Regular.otf")
-        }
-        #homeBtn {
-            float : right;width: 40px; height: 40px; margin-right: 10px; margin-top: 35px;
-        }
-        #text1{
-            font-size: 40px; margin-bottom: 6px; padding-left: 8%;
-        }
-        #underline{
-            background: black; width:180px; height:10px; position: relative; left: 8%;
-        }
-
-        #guideBtn{
-            width : 224px;
-            height: 50px;
-            border-radius: 35px;
-            border: solid 2px black;
-            float:right;
-            font-family : noto-bold;
-            text-align: center;
-            vertical-align: middle;
-            line-height: 50px;
-            margin-right: 35px;
-            margin-top: 29px;
-            display:inline-block;
-        }
-        .bold{
-            font-family: noto-bold; color: black
-        }
-        .f{
-            padding-left: 8%;
-        }
-        #firstline{
-            margin-top: 120px;
-        }
-        .line{
-            margin-bottom: 52px;
-            font-size: 20px;
-        }
-        .select{
-            height:20px;
-        }
-        section input{
-            position: relative;; left : 25%; height: 20px; outline: 0; border-width: 0 0 2px; border-color: #6b6a6e; width : 200px; text-align: right;
-        }
-        #submitBtn{
-            border-radius: 30px;
-            background: black;
-            color: white; font-family:
-                noto-bold; size: 30px;
-            width : 25%; text-align: center; position: relative;
-            left: 8%; height: 60px;
-            vertical-align: middle;
-            line-height: 60px;
-            margin-bottom: 50px;
-        }
-        .container{
-            height:150px; background:#ebebf6;
-        }
-        .lineElement3{
-            position : relative; left : 5%;
-        }
-        footer span{
-            font-size:16px; font-family: noto-regular;
-        }
-        .footer-section{
-            float: left; margin-top: 40px; margin-left: 12.5%; color: #6b6a6e; font-family: noto-regular;
-        }
-        .footer-first{
-            float: left; margin-top: 40px; margin-left: 5%; color: #6b6a6e;
-        }
-
-        @media (max-width: 1220px) and (min-width:960px){
-            header{width:100%;}
-            section { width: 100%;}
-            footer span{
-                font-size: 12px;
-            }
-            .footer-section{
-                font-size: 12px;
-            }
-        }
-        @media (max-width : 960px)and (min-width:768px){
-            header{width:100%}
-            section { width: 100%;}
-            footer{width:100%;}
-            #wrap{width:100%}
-            footer span{
-                font-size: 10px;
-            }
-            .footer-section{
-                font-size: 10px;
-            }
-        }
-        @media (max-width: 760px){
-            header{width:100%}
-            section { width: 100%;}
-            #wrap{width:100%}
-            #homeBtn{
-                float : right;
-                width: 24px;
-                height: 24px;
-                margin-right: 18px;
-                margin-top: 16px;
-            }
-            #firstline{
-                margin-top: 60px;
-            }
-            .line{
-                margin-bottom: 26px;
-                font-size: 16px;
-            }
-            .select{
-                height:16px;
-            }
-            section input{
-                position: relative;; left : 25%; height: 16px; outline: 0; border-width: 0 0 2px; border-color: #6b6a6e; width : 50%; text-align: right;
-            }
-            #guideBtn{
-                width : 127px;
-                font-size: 12px;
-                height: 24px;
-                border-radius: 25px;
-                border: solid 1.5px black;
-                float:right;
-                font-family : noto-bold;
-                text-align: center;
-                vertical-align: middle;
-                line-height: 24px;
-                margin-right: 18px;
-                margin-top: 16px;
-                display:inline-block;
-            }
-            #text1{
-                font-size: 20px; margin-bottom: 6px;
-            }
-            #underline{
-                background: black; width:60px; height:5px; position: relative; left: 8%;
-            }
-            #submitBtn{
-                width: 70%;
-                position: static;
-                margin : 0 auto 30px auto;
-                font-family: noto-bold; size: 20px;
-                line-height: 30px;
-                height: 30px;
-            }
-            .c{
-                font-size: 16px;
-            }
-            .f {
-                font-size: 16px;
-            }
-
-            .container{
-                height:200px; background:#ebebf6;
-            }
-            footer span{
-                font-size: 8px;
-            }
-            .footer-section{
-                font-size: 8px;
-                margin-top: 20px;
-                margin-left: 5%
-            }
-            .footer-first{
-                margin-top: 10px;
-            }
-            .visible-mobile {
-                display: inline;
-            }
-
-            .hidden-mobile {
-                display: none;
-            }
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/headerFooter.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/register.css' %}">
+  <meta charset="UTF-8">
+  <script type='text/javascript' src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <title>PEPUP</title>
 </head>
 <body>
 <!--section-->
-<div id="wrap">
-    <header>
-        <img id = "homeBtn" src="./homesmall.svg">
-        <div id="guideBtn">
-            SELL WITH PEP UP
-        </div>
-    </header>
-    <section>
-        <p id = "text1" class = "bold">대리판매 신청하기</p>
-        <div id = "underline"></div>
-        <p class="bold line" id="firstline"><span class="f">본인성함</span><input id = "name" text="text" name="name"></p>
-        <p class="bold line" id="line2"><span class="f">전화번호</span><input id = "phone" type="text" name="name"></p>
-        <p class="bold line" id="line3"><span class="f">상품개수</span><input id = "count" type="number" name="name"></p>
-        <p class="bold line"><span class="f">판매대금 받으실 은행</span>
-            <select id = "bank" name="bank" class="lineElement3">
-            </select>
-        </p>
-        <p class="bold line"><span class="f">계좌번호</span><input id = "bankAccount" type="text" name="name"></p>
-        <div id="submitBtn">신청하기</div>
-    </section>
-
-</div>
-<!--footer-->
-<footer>
-    <div class="container">
-        <div class="footer-first">
+    <div id="wrap">
+        <header>
+            <img id = "homeBtn" src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/homesmall.svg">
+            <div id="guideBtn">
+                SELL WITH PEP UP
+            </div>
+        </header>
+        <section>
+            <p id = "text1" class = "bold">대리판매 신청하기</p>
+            <div id = "underline"></div>
+            <p class="bold line" id="firstline"><span class="f">본인성함</span><input id = "name" text="text" name="name"></p>
+            <p class="bold line" id="line2"><span class="f">전화번호</span><input id = "phone" type="text" name="name"></p>
+            <p class="bold line" id="line3"><span class="f">상품개수</span><input id = "count" type="number" name="name"></p>
+            <p class="bold line"><span class="f">판매대금 받으실 은행</span>
+                <select id = "bank" name="bank" class="lineElement3">   
+                </select>
+            </p>
+            <p class="bold line"><span class="f">계좌번호</span><input id = "bankAccount" type="text" name="name"></p>
+            <div id="submitBtn">신청하기</div>
+        </section>
+        
+    </div>
+    <!--footer-->
+  <footer>
+        <div class="container">
+          <div class="footer-first">
             <span style="font-size: 20px; font-family: noto-bold;">주식회사 몽데이크</span>
             <br/>
             <span>Copyright 2020 Mondeique. All rights reserved.</span>
-        </div>
-        <div class="footer-section">
+          </div>
+          <div class="footer-section">
             <span style="font-family: noto-bold;">주소</span> 서울시 마포구 연희로 11 5층 S-541호<br/>
             <span style="font-family: noto-bold;">대표</span> 박준용, 이상우<br/>
             <span style="font-family: noto-bold;">사업자등록번호</span> 789-81-01945<br/>
             <span style="font-family: noto-bold;">이메일</span> support@mondeique.com
+          </div>
         </div>
-    </div>
-</footer>
-
+  </footer>
+  
 </body>
 <script>
     var list  = ["기업은행", "국민은행", "농협중앙회", "단위농협", "우리은행", "대구은행", "외환은행", "SC제일은행", "부산은행", "새망르금고", "한국씨티은행", "광주은행", "경남은행", "수협", "신협", "전북은행", "제주은행", "산림조합", "우체국", "하나은행", "신한은행", "동양종금증권", "한국투자증권", "삼성증권", "미래에셋", "우리투자증권", "현대증권", "SK증권", "신한금융투자", "하이증권", "HMC증권", "대신증권", "하나대투증권", "동부증권", "유진증권", "메리츠증권", "신영증권", "대우증권"]
     $(document).ready(function(){
-        for(var i =0; i<list.length; i++){
-            var $div = $(`<option value="${list[i]}">${list[i]}</option>`)
-            $("select[name=bank]").append($div)
-        }
+      for(var i =0; i<list.length; i++){
+          var $div = $(`<option value="${list[i]}">${list[i]}</option>`)
+          $("select[name=bank]").append($div)
+      }
     });
-
-    {#var csrftoken = $.cookie('csrftoken');#}
-    {#$.ajaxSetup({#}
-    {#    beforeSend: function(xhr, settings) {#}
-    {#        xhr.setRequestHeader("X-CSRFToken", csrftoken);#}
-    {#    }#}
-    {#});#}
-
+  
     function send(){
-        var name
-        var phone
-        var quantity
-        var bank
-        var account
-        if($("#name").val() == undefined){
-            name = null
-        }else{
-            name = $("#name").val()
+      var name
+      var phone
+      var quantity
+      var bank
+      var account
+      if($("#name").val() == undefined){
+        name = null
+      }else{
+        name = $("#name").val()
+      }
+      if($("#phone").val() == undefined){
+        phone = null
+      }else{
+        phone = $("#phone").val()
+      }
+      if($("#count").val() == undefined){
+        quantity = null
+      }else{
+        quantity = $("#count").val()
+      }
+      if($("#bank").val() == undefined){
+        bank = null
+      }else{
+        bank = $("#bank").val()
+      }
+      if($("#bankAccount").val() == undefined){
+        account = null
+      }else{
+        account = $("#bankAccount").val()
+      }
+    $.ajax({
+      method : "POST",
+      url : {% url 'landing:register' %},
+      data : {
+          csrfmiddlewaretoken: "{{ csrf_token }}",
+          name : name,
+          phone : phone,
+          quantity : quantity,
+          bank : bank,
+          account : account
+      },
+      // dataType : "application/json",
+      // contentType : "application/json",
+      success : function(res){
+          {% url 'landing:success' %}
+      },
+      error:function(){
+          window.alert("신청 양식을 올바르게 채워주세요!");
         }
-        if($("#phone").val() == undefined){
-            phone = null
-        }else{
-            phone = $("#phone").val()
-        }
-        if($("#count").val() == undefined){
-            quantity = null
-        }else{
-            quantity = $("#count").val()
-        }
-        if($("#bank").val() == undefined){
-            bank = null
-        }else{
-            bank = $("#bank").val()
-        }
-        if($("#bankAccount").val() == undefined){
-            account = null
-        }else{
-            account = $("#bankAccount").val()
-        }
-        $.ajax({
-            type : 'post',
-            url : "{% url 'landing:register' %}",
-            data : {
-                csrfmiddlewaretoken: "{{ csrf_token }}",
-                name : name,
-                phone : phone,
-                quantity : quantity,
-                bank : bank,
-                account : account
-            },
-            // dataType : "application/json",
-            // contentType : "application/json",
-            success : function(res){
-                window.alert("성공")
-            },
-            error:function(){
-                window.alert("신청 양식을 올바르게 채워주세요!");
-            }
-        })
+      })
     }
     $("#submitBtn").on("click", send)
+
+    $("#guideBtn").hover(function(){
+    $("#guideBtn").css("background", "black").css("color","white");
+  }, function(){
+    $("#guideBtn").css("background", "white").css("color","black");
+  })
+  $("#guideBtn").click(function(){
+      window.location.href = {% url 'landing:sell_intro' %}
+  })
+  $("#homeBtn").click(function(){
+    window.location.href = {% url 'landing:home' %}
+  })
 </script>
 </html>

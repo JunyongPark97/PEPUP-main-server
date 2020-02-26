@@ -14,7 +14,16 @@ from .serializers import RegisterSerializer
 
 
 def home(request):
+    return render(request, 'landingHome.html')
+
+def apply(request):
+    return render(request, 'register.html')
+
+def sell_intro(request):
     return render(request, 'landing.html')
+
+def success(request):
+    return render(request, 'success.html')
 
 
 class LandingViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
@@ -39,7 +48,7 @@ class LandingViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
 
     @action(methods=['get'], detail=False)
     def sell_intro(self, request):
-        return render(request, 'sell_intro.html')
+        return render(request, 'landing.html')
 
     @action(methods=['get'], detail=False)
     def success(self, request):

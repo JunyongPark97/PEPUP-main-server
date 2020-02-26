@@ -9,7 +9,11 @@ router.register('', LandingViewSet)
 app_name = 'landing'
 
 urlpatterns = [
-    path('', views.home),
+    path('', views.home, name='home'),
+    path('apply/', views.apply, name='apply'),
+    path('sell_intro/', views.sell_intro, name='sell_intro'),
+    path('success/', views.success, name='success'),
+
     path('register/', views.RegisterView.as_view(), name='register'),
-    path('', include(router.urls))
+    # path('', include(router.urls))
 ]

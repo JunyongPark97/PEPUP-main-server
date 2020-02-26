@@ -3,7 +3,6 @@
 <html lang="en">
 <head>
   <link rel="stylesheet" type="text/css" href="{% static 'css/headerFooter.css' %}">
-  <link rel="stylesheet" type="text/css" href="{% static 'css/goRegister.css.css' %}">
   <meta charset="UTF-8">
   <script type='text/javascript' src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
   <title>PEPUP</title>
@@ -22,11 +21,8 @@
             </div>
         </header>
         <section id="sectionSell">
-            <img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingsmall.jpg" class="mobile"/>
-            <img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingpage.jpg" class="non-mobile"/>
-            <div id = "goSheetBtn">
-                대리 판매 신청서 작성
-            </div>
+            <img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingHomeSmall.jpg" class="mobile"/>
+            <img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/landingHome.jpg" class="non-mobile"/>
         </section>
     </div>
     <!--footer-->
@@ -57,28 +53,16 @@
   //     $(".mobile").css("display","none")
   //   }
   // })
-
-  //가이드버튼
   $("#guideBtn").hover(function(){
-      $("#guideBtn").css("background", "black").css("color","white");
+    $("#guideBtn").css("background", "black").css("color","white");
   }, function(){
-      $("#guideBtn").css("background", "white").css("color","black");
+    $("#guideBtn").css("background", "white").css("color","black");
   })
   $("#guideBtn").click(function(){
       window.location.href = {% url 'landing:sell_intro' %}
   })
   $("#homeBtn").click(function(){
-      window.location.href = {% url 'landing:home' %}
-  })
-
-  // 셀하기 버튼
-  $("#goSheetBtn").hover(function(){
-      $("#goSheetBtn").css("background", "white").css("color", "black")
-  }, function(){
-      $("#goSheetBtn").css("background", "black").css("color", "white")
-  })
-  $("#goSheetBtn").click(function(){
-      window.location.href = {% url 'landing:apply' %}
+    window.location.href = {% url 'landing:home' %}
   })
 </script>
 </html>
