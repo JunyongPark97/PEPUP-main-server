@@ -3,6 +3,7 @@
 <html lang="en">
 <head>
   <link rel="stylesheet" type="text/css" href="{% static 'css/headerFooter.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/sns.css' %}">
     <link rel="shortcut icon" type="image/x-icon" href="https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/favicon-96x96.png"/>
   <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -20,6 +21,10 @@
             <img id = "homeBtn" src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/homesmall.svg">
             <div id="guideBtn">
                 SELL WITH PEP UP
+            </div>
+            <div id="sns">
+                <span class="snsimg kakao"><img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/kakaoImg.svg"/></span><span class = "snstext kakao">kakao channel</span>
+                <span class="snsimg insta"><img src="https://pepup-storage.s3.ap-northeast-2.amazonaws.com/landing/instaImg.svg"/></span><span class = "snstext insta">Instagram</span>
             </div>
         </header>
         <section id="sectionSell">
@@ -66,5 +71,13 @@
   $("#homeBtn").click(function(){
     window.location.href = "http://pepup.world"
   })
+
+    //sns link
+    $(".kakao").click(function () {
+        window.location.href = "http://pf.kakao.com/_xbjYMxb"
+    })
+    $(".insta").click(function () {
+        window.location.href = "http://instagram.com/pepup.official"
+    })
 </script>
 </html>
