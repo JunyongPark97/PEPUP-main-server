@@ -34,13 +34,16 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     username = None
-    email = models.EmailField(verbose_name='email address', unique=True, null=True)
+    email = models.EmailField(verbose_name='email address', db_index=True, unique=True, null=True)
     nickname = models.CharField(max_length=30, unique=True, null=True, verbose_name='nickname')
     phone = models.CharField(max_length=19, unique=True, null=True, help_text='숫자만 입력해주세요')
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nickname', 'phone']
 
     objects = UserManager()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    quit_at = models.DateTimeField(blank=True, null=True, default=None)
 
     def __str__(self):
         if self.is_anonymous:
