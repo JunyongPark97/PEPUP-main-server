@@ -10,3 +10,5 @@ class Register(models.Model):
     bank = models.CharField(max_length=100)
     account = models.CharField(max_length=100)
     created_at = models.DateField(auto_now_add=True)
+    check = models.BooleanField(default=False)
+    manager = models.CharField(max_length=50, null=True, blank=True)
