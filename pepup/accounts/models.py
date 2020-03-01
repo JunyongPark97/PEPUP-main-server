@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import (AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from django.conf import settings
-from api.models import Deal
 
 
 class UserManager(BaseUserManager):
@@ -121,15 +120,6 @@ class DeliveryPolicy(models.Model):
         if amount < self.amount and volume < self.volume:
             ret += self.general
         return ret
-
-
-class WalletLog(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
-    amount = models.IntegerField()
-    log = models.TextField(verbose_name='로그')
-    Deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.PROTECT)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
 
 class StoreAccount(models.Model):

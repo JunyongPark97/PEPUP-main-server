@@ -2,10 +2,12 @@ import string
 import random
 import requests
 import json
-from accounts.models import PhoneConfirm, WalletLog, SmsConfirm
+from accounts.models import PhoneConfirm, SmsConfirm
 from api.models import Follow
 from rest_framework.authtoken.models import Token
 from django.db.models import Sum
+
+from payment.models import WalletLog
 from .loader import load_credential
 import requests
 
@@ -80,15 +82,15 @@ def create_token(token_model, user):
     return token
 
 
-def get_user(request):
-    token_key = request.headers['Authorization'].split(' ')[1]
-    try:
-        token = Token.objects.get(key=token_key)
-        user = token.user
-        return user
-    except:
-        self.response = Response({'status':0})
-        return None
+# def get_user(request):
+#     token_key = request.headers['Authorization'].split(' ')[1]
+#     try:
+#         token = Token.objects.get(key=token_key)
+#         user = token.user
+#         return user
+#     except:
+#         self.response = Response({'status':0})
+#         return None
 
 def get_follower(user):
     followers = Follow.objects.filter(_to=user)

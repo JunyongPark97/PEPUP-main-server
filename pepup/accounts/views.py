@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny
 
 # allauth social
 from allauth.socialaccount.providers.kakao.views import KakaoOAuth2Adapter
@@ -31,18 +31,9 @@ from accounts.serializers import (
     CommonSerializer,
 )
 from accounts.socialserailzers import CustomSocialLoginSerializer
-from .permissions import IsOwnerByToken
-from .utils import create_token, SMSManager, get_user, generate_random_key, JusoMaster
+from .utils import create_token, SMSManager, JusoMaster
 from accounts.models import PhoneConfirm, User, Profile, SmsConfirm, Address
-from api.models import Product
-
-import json
 import requests
-
-from django.http import HttpResponse, JsonResponse
-
-
-# Create your views here.
 
 
 class AccountViewSet(viewsets.GenericViewSet):

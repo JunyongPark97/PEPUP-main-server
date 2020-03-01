@@ -1,6 +1,6 @@
 from django.db.models import Q as q
-from .serializers import FilterSerializer
 from django.http.request import QueryDict
+
 
 def set_filter(data):
     query = q()
