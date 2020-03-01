@@ -1,7 +1,6 @@
 from django.core.validators import MinValueValidator,MaxValueValidator
 from django.db import models
 from django.conf import settings
-from api.models import Product
 
 
 class Commission(models.Model):
@@ -109,7 +108,11 @@ class Delivery(models.Model):
     number = models.TextField(verbose_name='운송장번호')
 
 
+from api.models import Product
+
+
 class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
+
     STATUS = [
         (1, '결제전'),
         (2, '결제완료'),  # payment/done/ 처리시 바뀜 = 배송전 , noti 날려주기.
@@ -124,7 +127,7 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
     ]
 
     deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.SET_NULL)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_buyer')
     status = models.IntegerField(choices=STATUS, default=1)
