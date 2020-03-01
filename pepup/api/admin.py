@@ -4,7 +4,7 @@ from django.utils.safestring import mark_safe
 
 from payment.models import Delivery
 from .models import Brand, Product, ProdThumbnail, Like, Tag, Follow, GenderDivision, FirstCategory, \
-    SecondCategory, Size, ProdImage, Review
+    SecondCategory, Size, ProdImage
 
 
 # Register your models here.
@@ -79,5 +79,4 @@ admin.site.register(FirstCategory, FirstCategoryAdmin)
 admin.site.register(SecondCategory, SecondCategoryAdmin)
 admin.site.register(Size, SizeAdmin)
 
-admin.site.register(Review)
 

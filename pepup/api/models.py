@@ -4,10 +4,8 @@ import math
 
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFill
-from django.db.models import ExpressionWrapper
 
 # Create your models here.
-from payment.models import Deal
 
 
 class Brand(models.Model):
@@ -155,7 +153,6 @@ class Like(models.Model):
     is_liked = models.BooleanField(default=True)
 
 
-
 class Follow(models.Model):
     _from = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='_from',
                               on_delete=models.CASCADE)
@@ -165,20 +162,3 @@ class Follow(models.Model):
     is_follow = models.BooleanField(default=True)
 
 
-def review_directory_path(instance, filename):
-    return 'user/{}/review/thumbnail_{}'.format(instance.seller.email, filename)
-
-
-class Review(models.Model):
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='reviews', on_delete=models.CASCADE)
-    seller = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_reviews', on_delete=models.CASCADE)
-    context = models.CharField(max_length=50, null=True, blank=True)
-    satisfaction = models.DecimalField(decimal_places=2, max_digits=4)
-    deal = models.OneToOneField(Deal, on_delete=models.CASCADE, related_name='review')
-    thumbnail = ProcessedImageField(
-        null=True, blank=True,
-        upload_to=review_directory_path,  # 저장 위치
-        processors=[ResizeToFill(300, 300)],  # 사이즈 조정
-        format='JPEG',  # 최종 저장 포맷
-        options={'quality': 70})
-    created_at = models.DateTimeField(auto_now_add=True)

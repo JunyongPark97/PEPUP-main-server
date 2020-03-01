@@ -1,5 +1,5 @@
 from django.contrib import admin
-from payment.models import Commission, WalletLog, Trade, Deal, Payment
+from payment.models import Commission, WalletLog, Trade, Deal, Payment, Review
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
@@ -50,3 +50,5 @@ admin.site.register(Trade, TradeAdmin)
 admin.site.register(Deal, DealAdmin)
 admin.site.register(Payment, PaymentAdmin)
 admin.site.register(WalletLog)
+admin.site.register(Review)
+

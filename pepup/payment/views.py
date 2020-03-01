@@ -19,11 +19,12 @@ from django.db import transaction
 from django.db.models import IntegerField, Value, Case, When
 from django.db.models.functions import Ceil
 
+from api.models import Product
 from .Bootpay import BootpayApi
 # model
 from accounts.models import User, DeliveryPolicy
 from .loader import load_credential
-from .models import Product, Payment, Trade, Deal, Delivery
+from .models import Payment, Trade, Deal, Delivery
 from payment.models import Commission
 
 # serializer

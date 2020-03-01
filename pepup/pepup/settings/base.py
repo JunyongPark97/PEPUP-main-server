@@ -35,11 +35,11 @@ INSTALLED_APPS = [
 
 # apps
 SECONDS_APPS = [
+    'payment',
     'accounts',
     'api',
     'notice',
     'landing',
-    'payment',
     # 'chat',
 ]
 

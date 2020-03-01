@@ -4,9 +4,10 @@ from rest_framework import serializers
 from django.db.models import Avg
 from accounts.models import User, DeliveryPolicy, StoreAccount
 from accounts.serializers import UserSerializer, ThumbnailSerializer
+from payment.models import Review
 from .models import (Product, Brand, ProdThumbnail,
                      Like, Follow, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage,
-                     Review)
+                     )
 from api.loader import load_credential
 
 
@@ -314,6 +315,38 @@ class FollowingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ['_to', 'tag', 'is_follow']
+
+
+class ProductForTradeSerializer(serializers.ModelSerializer):
+    brand = BrandSerializer(read_only=True)
+    thumbnails = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+    second_category = SecondCategorySerializer(allow_null=True)
+    discounted_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id','name','price', 'discount_rate','discounted_price','brand', 'thumbnails', 'size', 'second_category']
+
+    def get_thumbnails(self, obj):
+        thumbnails = obj.prodthumbnail_set.first()
+        if not thumbnails:
+            return {"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
+        return ProdThumbnailSerializer(thumbnails).data
+
+    def get_size(self, obj):
+        if hasattr(obj.size, 'size_max'):
+            if obj.size.size_max:
+                return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
+            if obj.size.category.name == 'SHOES':
+                return "{}(cm)".format(obj.size.size)
+        if hasattr(obj.size,'size_name'):
+            return "{}({})".format(obj.size.size_name, obj.size.size)
+        return ""
+
+    def get_discounted_price(self,obj):
+        return obj.discounted_price
+
 
 
 class StoreProductSerializer(serializers.ModelSerializer):

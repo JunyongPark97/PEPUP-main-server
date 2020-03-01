@@ -2,8 +2,8 @@ from django.conf import settings
 from rest_framework import serializers
 from accounts.models import User, DeliveryPolicy
 from accounts.serializers import ThumbnailSerializer
-from api.serializers import BrandSerializer, SecondCategorySerializer, ProdThumbnailSerializer
-from .models import (Product, Trade, Deal, Payment)
+from api.serializers import ProductForTradeSerializer
+from .models import Trade, Deal, Payment
 from api.loader import load_credential
 
 
@@ -23,37 +23,6 @@ class SellerForTradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'nickname', 'profile']
-
-
-class ProductForTradeSerializer(serializers.ModelSerializer):
-    brand = BrandSerializer(read_only=True)
-    thumbnails = serializers.SerializerMethodField()
-    size = serializers.SerializerMethodField()
-    second_category = SecondCategorySerializer(allow_null=True)
-    discounted_price = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Product
-        fields = ['id','name','price', 'discount_rate','discounted_price','brand', 'thumbnails', 'size', 'second_category']
-
-    def get_thumbnails(self, obj):
-        thumbnails = obj.prodthumbnail_set.first()
-        if not thumbnails:
-            return {"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
-        return ProdThumbnailSerializer(thumbnails).data
-
-    def get_size(self, obj):
-        if hasattr(obj.size, 'size_max'):
-            if obj.size.size_max:
-                return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
-            if obj.size.category.name == 'SHOES':
-                return "{}(cm)".format(obj.size.size)
-        if hasattr(obj.size,'size_name'):
-            return "{}({})".format(obj.size.size_name, obj.size.size)
-        return ""
-
-    def get_discounted_price(self,obj):
-        return obj.discounted_price
 
 
 class PaymentInfoForTrade(serializers.ModelSerializer):
