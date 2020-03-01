@@ -7,6 +7,7 @@ from imagekit.processors import ResizeToFill
 from django.db.models import ExpressionWrapper
 
 # Create your models here.
+from payment.models import Deal
 
 
 class Brand(models.Model):
@@ -173,7 +174,7 @@ class Review(models.Model):
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_reviews', on_delete=models.CASCADE)
     context = models.CharField(max_length=50, null=True, blank=True)
     satisfaction = models.DecimalField(decimal_places=2, max_digits=4)
-    deal = models.OneToOneField('Deal', on_delete=models.CASCADE, related_name='review')
+    deal = models.OneToOneField(Deal, on_delete=models.CASCADE, related_name='review')
     thumbnail = ProcessedImageField(
         null=True, blank=True,
         upload_to=review_directory_path,  # 저장 위치
