@@ -646,6 +646,7 @@ class FollowViewSet(viewsets.GenericViewSet):
         _from = request.user
         _to = request.data.get('_to')
         tag = request.data.get('tag')
+        print(tag)
         if _to:
             if _from.pk == int(_to):
                 return Response({'status': "user can't follow himself"}, status=status.HTTP_406_NOT_ACCEPTABLE)
@@ -657,7 +658,7 @@ class FollowViewSet(viewsets.GenericViewSet):
         elif tag:
             try:
                 tag = Tag.objects.get(pk=tag)
-                follow, created = Follow.objects.get_or_create(_from=_from, tag_id=tag)
+                follow, created = Follow.objects.get_or_create(_from=_from, tag_id=tag.id)
             except Tag.DoesNotExist:
                 return Response({'status': "Tag does not exist"}, status=status.HTTP_404_NOT_FOUND)
         else:
