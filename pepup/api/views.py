@@ -565,10 +565,10 @@ class FollowViewSet(viewsets.GenericViewSet):
 
     def get_products_by_follow(self):
         follows = Follow.objects.filter(_from=self.user)
-        self.follows_by_seller = follows.filter(tag=None)
+        self.follows_by_seller = follows.filter(tag=None, is_follow=True)
         self.follows_by_tag = follows\
             .prefetch_related('tag')\
-            .filter(_to=None)
+            .filter(_to=None, is_follow=True)
 
         self.products_by_seller = Product.objects\
             .select_related('seller', 'brand')\
