@@ -64,12 +64,20 @@ class DeliveryAdmin(admin.ModelAdmin):
     list_display = ['sender','receiver','state','pk']
 
 
+class TagAdmin(admin.ModelAdmin):
+    list_display = ['id', 'tag', 'products_id']
+
+    def products_id(self, obj):
+        ids = Product.objects.filter(tag=obj).values('id').distinct()
+        return ids
+
+
 admin.site.register(Brand)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(ProdThumbnail, ProdThumbnailAdmin)
 admin.site.register(ProdImage, ProdImageAdmin)
 admin.site.register(Like)
-admin.site.register(Tag)
+admin.site.register(Tag, TagAdmin)
 admin.site.register(Follow, FollowAdmin)
 admin.site.register(Delivery, DeliveryAdmin)
 
