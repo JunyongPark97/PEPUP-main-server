@@ -549,7 +549,7 @@ class TagViewSet(viewsets.GenericViewSet):
 
 
 class FollowViewSet(viewsets.GenericViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.filter(is_active=True)
     serializer_class = FollowSerializer
     pagination_class = FollowPagination
     permission_classes = [IsAuthenticated]
@@ -569,47 +569,49 @@ class FollowViewSet(viewsets.GenericViewSet):
         self.follows_by_tag = follows\
             .prefetch_related('tag')\
             .filter(_to=None)
+
         self.products_by_seller = Product.objects\
             .select_related('seller', 'brand')\
             .select_related('seller__profile')\
             .prefetch_related('seller___to')\
             .prefetch_related('tag')\
-            .filter(seller___to__in=self.follows_by_seller)\
-            .annotate(by=Value(1, output_field=IntegerField()))
+            .filter(seller___to__in=self.follows_by_seller)
+
         self.products_by_tag = Product.objects\
-            .select_related('brand', 'category', 'category__parent') \
+            .select_related('brand', 'seller', 'second_category', 'second_category__parent') \
             .select_related('seller__profile') \
             .prefetch_related('seller___to') \
             .prefetch_related('tag')\
-            .filter(tag__follow__in=self.follows_by_tag) \
-            .annotate(by=Value(2, output_field=IntegerField()))
+            .filter(tag__follow__in=self.follows_by_tag)
 
-    def custom_get_serializer(self, *args, **kwargs):
-        serializer_class = self.get_serializer_class()
-        kwargs['context'].update(self.get_serializer_context())
-        return serializer_class(*args, **kwargs)
-
-    # todo: response -> code, status and paginated response
     def list(self, request):
         """
         :method: GET
         :param request: header token
         :return: code, status and paginated response
         """
+
         self.user = request.user
-        if self.user.is_anonymous:
-            return Response({'code': -1, 'status': "로그인해주세요"})
         self.get_products_by_follow()
         self.get_recommended_seller()
-        page = self.paginate_queryset(self.products_by_seller | self.products_by_tag)
-        if page is not None:
-            serializer = self.custom_get_serializer(page, many=True, context={"request": self.request, "by_seller": list(self.products_by_seller.values_list('id', flat=True))})
-            return self.get_paginated_response({
-                "products": serializer.data,
-                "recommended": self.recommended.data
-            })
-        serializer = MainSerializer(self.products_by_tag|self.products_by_seller, many=True)
-        return Response(serializer.data)
+
+        products_by_seller = self.products_by_seller
+        products_by_tag = self.products_by_tag
+
+        qs = (products_by_seller | products_by_tag).distinct()
+
+        p_ids = list(products_by_seller.values_list('id', flat=True))
+        # qs_ids = list(qs.values_list('id', flat=True))
+
+        # likes_ids = list(Like.objects.filter(product_id__in=qs_ids,
+        #                                      user=self.user,
+        #                                      is_liked=True).values_list('product_id', flat=True))
+
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer_class()
+        serializer = serializer(page, many=True,
+                                context={"request": self.request, "by_seller": p_ids})
+        return self.get_paginated_response({"products": serializer.data, "recommended": []})
 
     @action(methods=['post'], detail=False, serializer_class=FollowingSerializer)
     def check_follow(self, request):

@@ -213,7 +213,7 @@ class FollowSerializer(serializers.ModelSerializer):
         return ProdImageSerializer(images, many=True).data
 
     def get_by(self, obj):
-        if obj.id in self.context.get('by_seller'):
+        if obj.id in self.context['by_seller']:
             return 1
         return 2
 
