@@ -939,3 +939,8 @@ class S3ImageUploadViewSet(viewsets.GenericViewSet):
         expiry = 60 * 60 * 24
         data = generate_s3_presigned_post('pepup-storage', key, expiry, ext, )
         return Response(data)
+
+
+class UploadS3ImageTestAPIView(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated,]
+    serializer_class = None

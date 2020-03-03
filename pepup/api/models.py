@@ -162,3 +162,13 @@ class Follow(models.Model):
     is_follow = models.BooleanField(default=True)
 
 
+from core.fields import S3ImageKeyField
+
+class ProdS3Image(models.Model):
+    """
+    s3 presigned post key save
+    """
+    # TODO : if client can upload, alternate ProdS3Image <-> ProdImage
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='s3_images')
+    image_key = S3ImageKeyField()
+

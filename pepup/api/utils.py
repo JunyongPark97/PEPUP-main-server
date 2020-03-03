@@ -40,12 +40,13 @@ def generate_s3_presigned_post(bucket, key, expiration, ext, acl='public-read'):
     content_type = content_type_map[ext]
     # http://boto3.readthedocs.io/en/latest/reference/services/s3.html#S3.Client.generate_presigned_post
     s3 = boto3.client('s3', aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_ACCESS_KEY)
+    print(content_type)
     data = s3.generate_presigned_post(
         bucket,
         "%s.%s" % (key, ext),
         Fields={
             'acl': acl,
-            'content-type': content_type,
+            # 'content-type': content_type,
             'bucket': bucket,
             'success_action_status': '201'
         },

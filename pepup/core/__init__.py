@@ -1,0 +1,1 @@
+S3_HOST = 'http://pepup-storage.s3.amazonaws.com'
