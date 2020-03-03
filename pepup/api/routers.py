@@ -3,7 +3,7 @@ from rest_framework.routers import Route, DefaultRouter, DynamicRoute
 from .views import (
     ProductViewSet, FollowViewSet,
     SearchViewSet, StoreViewSet, ReviewViewSet, DeliveryPolicyViewSet, ProductCategoryAPIViewSet, TagViewSet,
-    BrandViewSet)
+    BrandViewSet, S3ImageUploadViewSet)
 
 
 class CustomRouter(DefaultRouter):
@@ -61,3 +61,4 @@ router.register('delivery-policy', DeliveryPolicyViewSet, basename='review')
 router.register('category', ProductCategoryAPIViewSet, basename='review')
 router.register('tag', TagViewSet, basename='review')
 router.register('brand', BrandViewSet, basename='review')
+router.register('s3', S3ImageUploadViewSet, basename='s3')

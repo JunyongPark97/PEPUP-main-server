@@ -1,5 +1,8 @@
+import boto3
 from django.db.models import Q as q
 from django.http.request import QueryDict
+
+from api.loader import load_credential
 
 
 def set_filter(data):
@@ -26,6 +29,9 @@ def add_key_value(querydic, key, value):
 
 
 def generate_s3_presigned_post(bucket, key, expiration, ext, acl='public-read'):
+    ACCESS_KEY = load_credential("AWS_ACCESS_KEY_ID", "")
+    SECRET_ACCESS_KEY = load_credential("AWS_SECRET_ACCESS_KEY", "")
+
     content_type_map = {
         'jpg': 'image/jpeg',
         'mp3': 'audio/mpeg3',
@@ -33,7 +39,8 @@ def generate_s3_presigned_post(bucket, key, expiration, ext, acl='public-read'):
     }
     content_type = content_type_map[ext]
     # http://boto3.readthedocs.io/en/latest/reference/services/s3.html#S3.Client.generate_presigned_post
-    data = old_s3_client.generate_presigned_post(
+    s3 = boto3.client('s3', aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_ACCESS_KEY)
+    data = s3.generate_presigned_post(
         bucket,
         "%s.%s" % (key, ext),
         Fields={
