@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter, Route, DynamicRoute
-from .views import AccountViewSet, KakaoUserViewSet, GoogleUserViewSet
+from .views import AccountViewSet, KakaoUserViewSet, GoogleUserViewSet, AddressViewSet
 
 
 class CustomRouter(DefaultRouter):
@@ -49,4 +49,5 @@ class CustomRouter(DefaultRouter):
 
 router = CustomRouter()
 router.register('', AccountViewSet, basename='accounts')
+router.register('address', AddressViewSet, basename='accounts')
 router.register('kakao', KakaoUserViewSet, basename='kakao')

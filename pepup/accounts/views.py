@@ -4,6 +4,7 @@ from django.contrib.auth import (
 )
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
+from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework.response import Response
@@ -11,7 +12,8 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import mixins
 
 # allauth social
 from allauth.socialaccount.providers.kakao.views import KakaoOAuth2Adapter
@@ -308,8 +310,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         else:
             self.response = Response(self.serializer.errors)
 
-    # todo: anonymous user fix
-    @action(methods=['get', 'post'], detail=False)
+    @action(methods=['get', 'post'], detail=False, permission_classes=[IsAuthenticated])
     def profile(self, request):
         self.request = request
         self.user = self.request.user
@@ -322,75 +323,6 @@ class AccountViewSet(viewsets.GenericViewSet):
             self.serializer = ProfileSerializer(self.profile)
             self.response = Response({'profile': self.serializer.data})
         return self.response
-
-    @action(methods=['post'], detail=False)
-    def search_address(self, request, currentpage=1):
-        jusomaster = JusoMaster()
-        if request.data.get('currentpage'):
-            currentpage = request.data.get('currentpage')
-        commondata, data = jusomaster.search_juso(
-            keyword=request.data.get('keyword'),
-            currentpage=currentpage,
-            countperpage=10
-        )
-        common = CommonSerializer(data=commondata)
-        serializer = SearchAddrSerializer(data=data, many=True)
-        if serializer.is_valid() and common.is_valid():
-            return Response({'common': common.data, 'juso': serializer.data})
-        return Response(serializer.errors)
-
-    # todo: anonymous user fix
-    # todo: response -> code and status, address
-    @action(methods=['get'], detail=False)
-    def get_address(self, request):
-        """
-        method: GET
-        :param request: header token
-        :return: code, status and address
-        """
-        self.user = request.user
-        queryset = Address.objects.filter(user=self.user)
-        serializer = AddressSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    # todo: anonymous user fix
-    # todo: response -> code and status
-    @action(methods=['post'], detail=False)
-    def delete_address(self, request):
-        """
-        method: POST
-        :param request: header token
-        :return: code and status
-        """
-        self.user = request.user
-        try:
-            address = Address.objects.get(pk=request.data.get('pk'))
-        except ObjectDoesNotExist:
-            return Response({'status': _('pk does not match')}, status=status.HTTP_404_NOT_FOUND)
-        serializer = AddressSerializer(address)
-        if address.user == self.user:
-            address.delete()
-            return Response({'status': _('Successfully delete')}, status=status.HTTP_200_OK)
-        else:
-            return Response({'status': _("user does not match")}, status=status.HTTP_401_UNAUTHORIZED)
-
-    # todo: anonymous user fix
-    # todo: response -> code and status
-    @action(methods=['post'], detail=False)
-    def set_address(self, request):
-        """
-        Method: POST
-        :param request: header token and bodyaddress
-        :return: code and status
-        """
-        self.user = request.user
-        serializer = AddressSerializer(data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save(
-                user=self.user
-            )
-            return Response({'status': _("Successfully set address")}, status.HTTP_201_CREATED)
-        return Response(serializer.errors)
 
     def _find_email(self):
         """
@@ -580,6 +512,91 @@ class SocialUserViewSet(ViewSetMixin, SocialLoginView):
     def create(self):
         # process signup
         pass
+
+
+class AddressViewSet(viewsets.ModelViewSet):
+    queryset = Address.objects.all()
+    permission_classes = [IsAuthenticated, ]
+    serializer_class = AddressSerializer
+
+    @action(methods=['post'], detail=False)
+    def search(self, request, currentpage=1):
+        jusomaster = JusoMaster()
+        if request.data.get('currentpage'):
+            currentpage = request.data.get('currentpage')
+        commondata, data = jusomaster.search_juso(
+            keyword=request.data.get('keyword'),
+            currentpage=currentpage,
+            countperpage=10
+        )
+        common = CommonSerializer(data=commondata)
+        serializer = SearchAddrSerializer(data=data, many=True)
+        if serializer.is_valid() and common.is_valid():
+            return Response({'common': common.data, 'juso': serializer.data})
+        return Response(serializer.errors)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        method: GET
+        :param request: header token
+        :return:
+        """
+        return super(AddressViewSet, self).retrieve(request, *args, **kwargs)
+
+    def list(self, request, *args, **kwargs):
+        """
+        method: GET
+        :param request: header token
+        :return: status and address
+        """
+        user = request.user
+        addresses = self.get_queryset().filter(user=user).order_by('-updated_at')
+        serializer = self.get_serializer(addresses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        method: DELETE
+        :param request: header token
+        :return: status
+        """
+        return super(AddressViewSet, self).destroy(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Method: POST
+        :param request: header token and bodyaddress
+        :return: code and status
+        """
+        user = request.user
+        serializer = self.get_serializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors)
+
+        # others recent = False
+        self.get_queryset().update(recent=False)
+
+        serializer.save(user=user)
+
+        return Response(status=status.HTTP_201_CREATED)
+
+    @action(methods=['put'], detail=True)
+    def recent(self, request, *args, **kwargs):
+        obj = self.get_object()
+        self.get_queryset().update(recent=False)
+        obj.recent = True
+        obj.save()
+        return Response(status=status.HTTP_206_PARTIAL_CONTENT)
+
+
+
+    # def get_object(self):
+    #     user = self.request.user
+    #     id = self.kwargs['pk']
+    #     obj = self.get_queryset().filter(user=user, id=id)
+    #     if not obj:
+    #         return Response(status=status.HTTP_404_NOT_FOUND)
+    #     return obj.last()
 
 
 class CustomKakaoOAuth2Adapter(KakaoOAuth2Adapter):

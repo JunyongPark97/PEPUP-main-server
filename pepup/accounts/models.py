@@ -104,6 +104,8 @@ class Address(models.Model):
     roadAddr = models.TextField(verbose_name='도로명주소')
     jibunAddr = models.TextField(verbose_name='지번주소')
     detailAddr = models.TextField(verbose_name='상세주소')
+    recent = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class DeliveryPolicy(models.Model):

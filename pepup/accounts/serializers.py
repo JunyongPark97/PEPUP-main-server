@@ -175,9 +175,10 @@ class SearchAddrSerializer(serializers.ModelSerializer):
 
 
 class AddressSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Address
-        fields = ['id','user','zipNo', 'roadAddr', 'jibunAddr','detailAddr']
+        fields = ['id','name','zipNo', 'roadAddr', 'jibunAddr','detailAddr', 'recent']
 
 
 class KakaoSerializer(serializers.Serializer):

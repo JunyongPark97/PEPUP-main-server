@@ -135,7 +135,7 @@ class Cashier:
 
 class JusoMaster:
     url = "http://www.juso.go.kr/addrlink/addrLinkApi.do"
-    confmKey = 'U01TX0FVVEgyMDIwMDEzMDIxMDA1MDEwOTQyNzQ='
+    confmKey = load_credential("juso_conrifm_key")
 
     def search_juso(self, keyword='', currentpage=1, countperpage=10):
         res = requests.post(self.url, data={
