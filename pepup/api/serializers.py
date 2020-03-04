@@ -417,10 +417,11 @@ class StoreSerializer(serializers.ModelSerializer):
 class StoreLikeSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
+    sold = serializers.SerializerMethodField()
 
     class Meta:
         model = Like
-        fields = ['thumbnails', 'id']
+        fields = ['thumbnails', 'id', 'sold']
 
     def get_thumbnails(self, obj):
         thumbnails = obj.product.prodthumbnail_set.first()
@@ -432,6 +433,11 @@ class StoreLikeSerializer(serializers.ModelSerializer):
         if obj.product:
             return obj.product.id
         return None
+
+    def get_sold(self, obj):
+        if obj.product:
+            return obj.product.sold
+        return False
 
 
 class SimpleProfileSerializer(serializers.ModelSerializer):
