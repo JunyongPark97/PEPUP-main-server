@@ -144,8 +144,6 @@ class TradeViewSet(viewsets.GenericViewSet):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-
-
 class PaymentViewSet(viewsets.GenericViewSet):
     queryset = Trade.objects.all()
     serializer_class = TradeSerializer

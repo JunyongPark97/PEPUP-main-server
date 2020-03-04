@@ -387,9 +387,10 @@ class StoreSerializer(serializers.ModelSerializer):
              return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
 
     def get_profile_introduce(self, obj):
-        profile = obj.profile
-        if profile.introduce:
-            return profile.introduce
+        if hasattr(obj, 'profile'):
+            profile = obj.profile
+            if profile.introduce:
+                return profile.introduce
         return ''
 
     def get_review_score(self, obj):
