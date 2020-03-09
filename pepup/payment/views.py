@@ -320,7 +320,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
             'addr': request.data.get('address'),
             'application_id': request.data.get('application_id')
         })
-        return Response({'results': {'payform':serializer.data, 'payment_id':self.payment.id}}, status=status.HTTP_200_OK)
+        return Response({'results': {'payform':serializer.data, 'order_id':self.payment.id}}, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def confirm(self, request):
