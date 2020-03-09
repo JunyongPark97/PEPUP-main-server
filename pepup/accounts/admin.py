@@ -28,8 +28,8 @@ class UserAdmin(DjangoUserAdmin):
 
 
 class DeliveryPolicyAdmin(admin.ModelAdmin):
-    list_display = ['seller','general','mountain','amount','volume']
-
+    list_display = ['seller','general','mountain','amount','volume', 'active_amount', 'active_volume']
+    list_editable = ['general','mountain','amount','volume', 'active_amount', 'active_volume']
 
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'user_id']

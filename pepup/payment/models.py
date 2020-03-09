@@ -182,3 +182,18 @@ class Review(models.Model):
         format='JPEG',  # 최종 저장 포맷
         options={'quality': 70})
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class DeliveryMemo(models.Model):
+    memo = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    order = models.IntegerField(unique=True)
+
+    class Meta:
+        verbose_name = '배송메모 관리'
+        verbose_name_plural = '배송메모 관리'
+
+    def __str__(self):
+        return self.memo

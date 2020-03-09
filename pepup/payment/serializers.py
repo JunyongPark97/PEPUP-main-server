@@ -1,14 +1,18 @@
 from django.conf import settings
 from rest_framework import serializers
-from accounts.models import User, DeliveryPolicy
+from accounts.models import User, DeliveryPolicy, Address
 from accounts.serializers import ThumbnailSerializer
 from api.serializers import ProductForTradeSerializer
-from .models import Trade, Deal, Payment
+from .models import Trade, Deal, Payment, DeliveryMemo
 from api.loader import load_credential
 
 
 class SellerForTradeSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'nickname', 'profile']
 
     def get_profile(self, obj):
         if hasattr(obj.socialaccount_set.last(), 'extra_data'):
@@ -20,9 +24,8 @@ class SellerForTradeSerializer(serializers.ModelSerializer):
         except:
             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
 
-    class Meta:
-        model = User
-        fields = ['id', 'nickname', 'profile']
+    def get_delivery_policy(self, obj):
+        return None
 
 
 class PaymentInfoForTrade(serializers.ModelSerializer):
@@ -135,3 +138,40 @@ class PaymentCancelSerialzier(serializers.ModelSerializer):
             'cancelled_price', 'cancelled_tax_free',
             'revoked_at', 'status'
         ]
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    nickname = serializers.SerializerMethodField()
+    Addr = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Address
+        fields = ['nickname', 'phone', 'Addr', 'detailAddr']
+
+    def get_nickname(self, obj):
+        nickname = obj.user.nickname
+        return nickname
+
+    def get_phone(self, obj):
+        phone = obj.user.phone
+        return phone
+
+    def get_Addr(self, obj):
+        if obj.roadAddr:
+            return obj.roadAddr
+        elif obj.jibunAddr:
+            return obj.jibunAddr
+        else:
+            return None
+
+
+class UserNamenPhoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['nickname', 'phone']
+
+
+class DeliveryMemoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryMemo
+        fields = ['memo']

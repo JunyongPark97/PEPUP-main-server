@@ -24,7 +24,7 @@ from .Bootpay import BootpayApi
 # model
 from accounts.models import User, DeliveryPolicy
 from .loader import load_credential
-from .models import Payment, Trade, Deal, Delivery
+from .models import Payment, Trade, Deal, Delivery, DeliveryMemo
 from payment.models import Commission
 
 # serializer
@@ -33,8 +33,8 @@ from .serializers import (
     PayformSerializer,
     PaymentDoneSerialzier,
     PaymentCancelSerialzier,
-    GetPayFormSerializer
-)
+    GetPayFormSerializer,
+    AddressSerializer, UserNamenPhoneSerializer, DeliveryMemoSerializer)
 
 
 
@@ -73,32 +73,47 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
     def groupbyseller(self, dict_ls):
         ret_ls = []
         store = {}
+        helper = 0
         for d in dict_ls:
             if d['seller']['id'] in store.keys():
                 store[d['seller']['id']]['products']\
                     .append({'trade_id': d['id'], 'product': d['product']})
                 store[d['seller']['id']]['payinfo']['total'] += d['product']['discounted_price']
-                if store[d['seller']['id']]['payinfo']['lack_amount'] > 0:
+
+                helper += 1  # 한번 else 부터 갔다 들어오기 때문에 첫번째 들어왔을 때 뺴줌.
+                if helper == 1:
                     store[d['seller']['id']]['payinfo']['lack_amount'] -= d['product']['discounted_price']
-                elif store[d['seller']['id']]['payinfo']['delivery_charge'] > 0:
-                    store[d['seller']['id']]['payinfo']['delivery_charge'] = 0
-                if store[d['seller']['id']]['payinfo']['lack_volume'] > 0:
                     store[d['seller']['id']]['payinfo']['lack_volume'] -= 1
-                elif store[d['seller']['id']]['payinfo']['delivery_charge'] > 0:
+
+                if store[d['seller']['id']]['payinfo']['lack_amount'] > 0: # 가격할인정책에서 남은 가격이 0원보다 클 때
+                    store[d['seller']['id']]['payinfo']['lack_amount'] -= d['product']['discounted_price']
+                elif store[d['seller']['id']]['payinfo']['delivery_charge'] > 0 and d['payinfo']['active_amount']:
                     store[d['seller']['id']]['payinfo']['delivery_charge'] = 0
+
+                if store[d['seller']['id']]['payinfo']['lack_volume'] > 0: # 수량할인정책에서 남은 개수가 0개보다 클 때
+                    store[d['seller']['id']]['payinfo']['lack_volume'] -= 1
+                elif store[d['seller']['id']]['payinfo']['delivery_charge'] > 0 and d['payinfo']['active_volume']:
+                    store[d['seller']['id']]['payinfo']['delivery_charge'] = 0
+
             else:
                 lack_amount = d['payinfo']['amount'] - d['product']['discounted_price']
                 lack_volume = d['payinfo']['volume'] - 1
-                if lack_amount <= 0 or lack_volume <= 0:
+
+                if lack_amount <= 0 and d['payinfo']['active_amount']:
+                    delivery_charge = 0
+                elif lack_volume <= 0 and d['payinfo']['active_volume']:
                     delivery_charge = 0
                 else:
                     delivery_charge = d['payinfo']['general']
+
                 store[d['seller']['id']] = {
                     'seller': d['seller'],
                     'products': [{'trade_id': d['id'], 'product': d['product']}],
                     'payinfo': {
                         'total': d['product']['discounted_price'],
                         'delivery_charge': delivery_charge,
+                        'active_amount': d['payinfo']['active_amount'],
+                        'active_volume': d['payinfo']['active_volume'],
                         'lack_amount': lack_amount,
                         'lack_volume': lack_volume
                     }
@@ -128,7 +143,6 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
         serializer = TradeSerializer(self.trades, many=True)
         return Response(self.groupbyseller(serializer.data))
 
-    # todo: code, status and serializer data
     @action(methods=['post'], detail=False)
     def cancel(self, request):
         """
@@ -142,6 +156,47 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
             trades.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['post'], detail=False)
+    def payform(self, request, *args, **kwargs):
+        user = request.user
+
+        trades_id = request.data['trades']
+        trades = Trade.objects.filter(pk__in=trades_id, buyer=user, status=1)
+
+        # delete sold trades
+        if trades.filter(product__sold=True):
+            trades.filter(product__sold=True).delete()
+            return Response(status=status.HTTP_400_BAD_REQUEST) # TODO: how to 깔끔?
+
+        if not trades:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        user_info = UserNamenPhoneSerializer(user)
+        addresses = user.address_set.filter(recent=True)
+
+        if addresses:
+            addr = AddressSerializer(addresses.last()).data
+        else:
+            addr = None
+
+        memos = DeliveryMemo.objects.filter(is_active=True).order_by('order')
+        memo_list = DeliveryMemoSerializer(memos, many=True).data
+
+        trade_serializer = TradeSerializer(trades, many=True)
+        ordering_product = self.groupbyseller(trade_serializer.data)
+        total_price = 0
+        delivery_charge = 0
+        for product in ordering_product:
+            payinfo = product.pop('payinfo')
+            total_price = total_price + int(payinfo['total'])
+            delivery_charge = delivery_charge + int(payinfo['delivery_charge'])
+        return Response({"ordering_product": ordering_product,
+                         "user_info": user_info.data,
+                         "address": addr,
+                         "memo_list": memo_list,
+                         "price": {"total_price": total_price, "total_delivery_charge": delivery_charge}
+                         })
 
 
 class PaymentViewSet(viewsets.GenericViewSet):
