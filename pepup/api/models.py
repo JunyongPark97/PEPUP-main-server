@@ -1,10 +1,17 @@
+import os
+import urllib
+from io import BytesIO
+
+import requests
+from django.core.files import File
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import models
 from django.conf import settings
 import math
-
+from core.fields import S3ImageKeyField
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFill
-
+import urllib.request
 # Create your models here.
 
 
@@ -134,17 +141,57 @@ def thumb_directory_path(instance, filename):
 
 
 class ProdThumbnail(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.OneToOneField(Product, on_delete=models.CASCADE)
+    # image_key = S3ImageKeyField() # client key 저장 후 save 시 image 저장
     thumbnail = ProcessedImageField(
         upload_to=thumb_directory_path,  # 저장 위치
         processors=[ResizeToFill(350, 350)],  # 사이즈 조정
         format='JPEG',  # 최종 저장 포맷
-        options={'quality': 90})
+        options={'quality': 90},
+        null=True, blank=True)
+
+    @property
+    def image_url(self):
+        return self.thumbnail.url
+
+    def save(self, *args, **kwargs):
+        super(ProdThumbnail, self).save(*args, **kwargs)
+        self._save_thumbnail()
+
+    def _save_thumbnail(self):
+        from PIL import Image
+        resp = requests.get(self.product.images.first().image_url)
+        image = Image.open(BytesIO(resp.content))
+        crop_io = BytesIO()
+        image.save(crop_io, format='jpeg')
+        crop_file = InMemoryUploadedFile(crop_io, None, self._get_file_name(), 'image/jpeg', len(crop_io.getvalue()), None)
+        self.thumbnail.save(self._get_file_name(), crop_file, save=False)
+        # To avoid recursive save, call super.save
+        super(ProdThumbnail, self).save()
+
+    def _get_file_name(self):
+        return '{}.jpg'.format(self.product.images.first().image_key)
 
 
 class ProdImage(models.Model):
-    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='images')
+    """
+    [DEPRECATED]
+    """
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
     image = models.FileField(upload_to=img_directory_path)
+
+
+class ProdS3Image(models.Model):
+    """
+    s3 presigned post key save
+    """
+    # TODO : if client can upload, alternate ProdS3Image <-> ProdImage
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='images')
+    image_key = S3ImageKeyField()
+
+    @property
+    def image_url(self):
+        return self.image_key.url
 
 
 class Like(models.Model):
@@ -160,15 +207,3 @@ class Follow(models.Model):
                             on_delete=models.CASCADE)
     tag = models.ForeignKey(Tag, blank=True, null=True, on_delete=models.CASCADE)
     is_follow = models.BooleanField(default=True)
-
-
-from core.fields import S3ImageKeyField
-
-class ProdS3Image(models.Model):
-    """
-    s3 presigned post key save
-    """
-    # TODO : if client can upload, alternate ProdS3Image <-> ProdImage
-    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='s3_images')
-    image_key = S3ImageKeyField()
-

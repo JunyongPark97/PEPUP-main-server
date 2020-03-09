@@ -25,7 +25,7 @@ from payment.models import Trade
 from .loader import load_credential
 from .models import (Product, ProdThumbnail,
                      Brand, Like, Follow,
-                     Tag, FirstCategory, SecondCategory, Size, GenderDivision, ProdImage)
+                     Tag, FirstCategory, SecondCategory, Size, GenderDivision, ProdImage, ProdS3Image)
 
 # serializer
 from .serializers import (
@@ -74,7 +74,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         :return:
         """
         products = self.get_queryset().\
-            prefetch_related('prodthumbnail_set').all()
+            select_related('prodthumbnail').all()
 
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset=products, request=request)
@@ -94,7 +94,8 @@ class ProductViewSet(viewsets.GenericViewSet):
             'size',
             'seller__delivery_policy',
             'second_category__parent',
-        ).prefetch_related('prodthumbnail_set').all()
+            'prodthumbnail'
+            ).all()
 
         if 'gender' in filter_data:
             gender = filter_data.pop('gender')  # gender obj id(int)
@@ -161,6 +162,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+
     def set_prodThumbnail(self, product, request):
         for thum in request.FILES.getlist('thums'):
             ProdThumbnail.objects.create(
@@ -181,11 +183,10 @@ class ProductViewSet(viewsets.GenericViewSet):
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
 
         data = request.data.copy()
-
-        if not 'image' in data:
+        if not 'image_key' in data:
             return Response({"message": "Creating needs Image"}, status=status.HTTP_400_BAD_REQUEST)
 
-        image_data = data.pop('image')
+        image_data = data.pop('image_key')
 
         if '' in image_data:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -199,7 +200,7 @@ class ProductViewSet(viewsets.GenericViewSet):
 
         if serializer.is_valid():
             data = serializer.validated_data
-            data.update({'images': image_data})
+            data.update({'image_keys': image_data})
             product = serializer.create(data)
 
             # tag relation
@@ -216,14 +217,14 @@ class ProductViewSet(viewsets.GenericViewSet):
         """
         Product 업데이트 api 입니다.
         먼저 user가 권한이 있는지(작성자) 확인합니다.
-        image는 한장 이상이어야 합니다.
+        image_key는 하나 이상이어야 합니다.
         """
         data = request.data.copy()
 
-        if not 'image' in data:
+        if not 'image_key' in data:
             return Response({"message": "Updating needs one more Image"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if '' in data['image']:
+        if '' in data['image_key']:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         instance = self.get_object()
@@ -232,7 +233,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         if instance.seller.id != user.id:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-        image_data = data.pop('image')
+        image_keys = data.pop('image_key')
 
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -242,15 +243,14 @@ class ProductViewSet(viewsets.GenericViewSet):
         product.images.all().delete()
 
         # remove prod thumbnail image
-        product.prodthumbnail_set.all().delete()
+        product.prodthumbnail.delete()
 
         # Images re-create
-        for image in image_data:
-            ProdImage.objects.create(product=product, image= image)
+        for image_key in image_keys:
+            ProdS3Image.objects.create(product=product, image_key=image_key)
 
         # Thumbnail re-create
-        thumbnail = image_data[0]
-        ProdThumbnail.objects.update_or_create(product=product, thumbnail=thumbnail)
+        ProdThumbnail.objects.create(product=product)
 
         # if tag changed , tag update
         if 'tag' in data:
@@ -273,6 +273,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         Product 를 삭제하지 않고 is_active=False 로 변환합니다.
         """
         instance = self.get_object()
+        print(instance)
         user = request.user
         if instance.seller.id != user.id:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
@@ -654,7 +655,6 @@ class FollowViewSet(viewsets.GenericViewSet):
         _from = request.user
         _to = request.data.get('_to')
         tag = request.data.get('tag')
-        print(tag)
         if _to:
             if _from.pk == int(_to):
                 return Response({'status': "user can't follow himself"}, status=status.HTTP_406_NOT_ACCEPTABLE)

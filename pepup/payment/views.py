@@ -136,7 +136,7 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
             .select_related('seller', 'seller__profile')\
             .select_related('seller__delivery_policy')\
             .select_related('product', 'product__size', 'product__size__category', 'product__brand', 'product__second_category')\
-            .prefetch_related('product__prodthumbnail_set__product')\
+            .prefetch_related('product__prodthumbnail__product')\
             .filter(buyer=self.buyer, status=1)
         if self.trades.filter(product__sold=True):
             self.trades.filter(product__sold=True).delete()

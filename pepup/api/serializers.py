@@ -1,4 +1,9 @@
+import os
+import urllib.request
+import uuid
+
 from django.conf import settings
+from django.core.files import File
 from django.http import Http404
 from rest_framework import serializers
 from django.db.models import Avg
@@ -7,7 +12,7 @@ from accounts.serializers import UserSerializer, ThumbnailSerializer
 from payment.models import Review
 from .models import (Product, Brand, ProdThumbnail,
                      Like, Follow, Tag, SecondCategory, FirstCategory, Size, GenderDivision, ProdImage,
-                     )
+                     ProdS3Image)
 from api.loader import load_credential
 
 
@@ -31,8 +36,8 @@ class ProdThumbnailSerializer(serializers.ModelSerializer):
 
 class ProdImageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ProdImage
-        fields = ['image',]
+        model = ProdS3Image
+        fields = ['image_url',]
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -105,7 +110,7 @@ class RelatedProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'thumbnails', 'size', 'price', 'name']
 
     def get_thumbnails(self, obj):
-        thumbnails = obj.prodthumbnail_set.first()
+        thumbnails = obj.prodthumbnail
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails).data
         return {"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
@@ -172,19 +177,19 @@ class ProductCreateSerializer(serializers.ModelSerializer):
 
         # Product
         product_data = validated_data
-        image_data = product_data.pop('images', [])
+        image_keys = product_data.pop('image_keys', [])
 
         product = self.Meta.model.objects.create(**product_data)
 
         # Images
-        for image in image_data:
+        for image_key in image_keys:
             data = {}
             data.update({'product': product})
-            data.update({'image': image})
-            ProdImage.objects.create(**data)
+            data.update({'image_key': image_key})
+            ProdS3Image.objects.create(**data)
 
         # Thumbnail 은 Product당 하나 생성됨.
-        thumb_data = {'product': product, 'thumbnail': image_data[0]}
+        thumb_data = {'product': product}
         ProdThumbnail.objects.create(**thumb_data)
 
         # Done!
@@ -248,7 +253,7 @@ class MainSerializer(serializers.ModelSerializer):
         fields = ['id', 'on_discount', 'sold', 'is_refundable', 'thumbnails']
 
     def get_thumbnails(self, obj):
-        thumbnails = obj.prodthumbnail_set.first()
+        thumbnails = obj.prodthumbnail
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails).data
         return {"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
@@ -329,7 +334,7 @@ class ProductForTradeSerializer(serializers.ModelSerializer):
         fields = ['id','name','price', 'discount_rate','discounted_price','brand', 'thumbnails', 'size', 'second_category']
 
     def get_thumbnails(self, obj):
-        thumbnails = obj.prodthumbnail_set.first()
+        thumbnails = obj.prodthumbnail
         if not thumbnails:
             return {"thumbnail": "https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
         return ProdThumbnailSerializer(thumbnails).data
@@ -357,7 +362,7 @@ class StoreProductSerializer(serializers.ModelSerializer):
         fields = ['thumbnails', 'id']
 
     def get_thumbnails(self, obj):
-        thumbnails = obj.prodthumbnail_set.first()
+        thumbnails = obj.prodthumbnail
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails).data
         return {"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
@@ -424,7 +429,7 @@ class StoreLikeSerializer(serializers.ModelSerializer):
         fields = ['thumbnails', 'id', 'sold']
 
     def get_thumbnails(self, obj):
-        thumbnails = obj.product.prodthumbnail_set.first()
+        thumbnails = obj.product.prodthumbnail
         if thumbnails:
             return ProdThumbnailSerializer(thumbnails).data
         return {"thumbnail":"https://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/static/img/prodthumbnail_default.png"}
