@@ -43,7 +43,7 @@ def pay_test(request):
 
 
 # Cart
-class TradeViewSet(viewsets.GenericViewSet):
+class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
     queryset = Trade.objects.all()
     serializer_class = TradeSerializer
     permission_classes = [IsAuthenticated]
@@ -140,8 +140,8 @@ class TradeViewSet(viewsets.GenericViewSet):
         trades = Trade.objects.filter(pk__in=ls_cancel, status=1)
         if trades:
             trades.delete()
-            return Response(status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class PaymentViewSet(viewsets.GenericViewSet):
