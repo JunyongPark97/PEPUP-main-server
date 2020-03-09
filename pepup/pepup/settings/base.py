@@ -40,7 +40,6 @@ SECONDS_APPS = [
     'api',
     'notice',
     'landing',
-    'pepup_service_manager'
     # 'chat',
 ]
 
