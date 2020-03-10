@@ -608,16 +608,16 @@ class FollowViewSet(viewsets.GenericViewSet):
         qs = (products_by_seller | products_by_tag).distinct()
 
         p_ids = list(products_by_seller.values_list('id', flat=True))
-        # qs_ids = list(qs.values_list('id', flat=True))
 
-        # likes_ids = list(Like.objects.filter(product_id__in=qs_ids,
-        #                                      user=self.user,
-        #                                      is_liked=True).values_list('product_id', flat=True))
+        tag_ids = list(self.follows_by_tag.values_list('tag_id'))
+        tag_id_list = []
+        for tag_id in tag_ids:
+            tag_id_list.append(tag_id[0])
 
         page = self.paginate_queryset(qs)
         serializer = self.get_serializer_class()
         serializer = serializer(page, many=True,
-                                context={"request": self.request, "by_seller": p_ids})
+                                context={"request": self.request, "by_seller": p_ids, "follow_tag_ids": tag_id_list})
         return self.get_paginated_response({"products": serializer.data, "recommended": []})
 
     @action(methods=['post'], detail=False, serializer_class=FollowingSerializer)

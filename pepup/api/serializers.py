@@ -209,6 +209,7 @@ class FollowSerializer(serializers.ModelSerializer):
     second_category = SecondCategorySerializer(allow_null=True)
     size = serializers.SerializerMethodField()
     age = serializers.SerializerMethodField()
+    follow_tag = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -245,6 +246,16 @@ class FollowSerializer(serializers.ModelSerializer):
         if obj.size.category.name == 'SHOES':
             return "{}(cm)".format(obj.size.size)
         return "{}({})".format(obj.size.size_name, obj.size.size)
+
+    def get_follow_tag(self, obj):
+        follow_tag_ids = self.context['follow_tag_ids']
+        tags = obj.tag.all()
+        for tag in tags:
+            if tag.id in follow_tag_ids:
+                return TagSerializer(tag).data
+        return None
+
+
 
     def get_age(self, obj):
         now = datetime.datetime.now()
