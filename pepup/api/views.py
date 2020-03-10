@@ -721,7 +721,7 @@ class SearchViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
-    @action(methods=['get'], detail=True)
+    @action(methods=['get'], detail=True, serializer_class=MainSerializer)
     def tag_search(self, request, pk):
         """
         searching api 에서 주어졌던 tag_id 기반으로 상품을 return 합니다.
