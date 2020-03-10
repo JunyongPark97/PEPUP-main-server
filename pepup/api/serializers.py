@@ -1,3 +1,4 @@
+import datetime
 import os
 import urllib.request
 import uuid
@@ -5,6 +6,7 @@ import uuid
 from django.conf import settings
 from django.core.files import File
 from django.http import Http404
+from django.utils.timesince import timesince
 from rest_framework import serializers
 from django.db.models import Avg
 from accounts.models import User, DeliveryPolicy, StoreAccount
@@ -206,6 +208,7 @@ class FollowSerializer(serializers.ModelSerializer):
     liked = serializers.SerializerMethodField()
     second_category = SecondCategorySerializer(allow_null=True)
     size = serializers.SerializerMethodField()
+    age = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -242,6 +245,18 @@ class FollowSerializer(serializers.ModelSerializer):
         if obj.size.category.name == 'SHOES':
             return "{}(cm)".format(obj.size.size)
         return "{}({})".format(obj.size.size_name, obj.size.size)
+
+    def get_age(self, obj):
+        now = datetime.datetime.now()
+        created_at = obj.created_at
+        try:
+            diff = now - created_at
+        except:
+            return created_at
+
+        if diff <= datetime.timedelta(minutes=1):
+            return 'just now'
+        return '%(time)s ago' % {'time': timesince(created_at).split(', ')[0]}
 
 
 class MainSerializer(serializers.ModelSerializer):
