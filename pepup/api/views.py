@@ -790,11 +790,18 @@ class StoreViewSet(viewsets.GenericViewSet):
         Store main retrieve api
         """
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
+        user = request.user
 
         if not retrieve_user:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        store_serializer = StoreSerializer(retrieve_user)
+        # get user followed
+        try:
+            user_followed = Follow.objects.get(_to=retrieve_user, _from=user).is_follow
+        except:
+            user_followed = False
+
+        store_serializer = StoreSerializer(retrieve_user, context={'user_followed': user_followed})
 
         products = retrieve_user.product_set.all().order_by('-created_at')
 

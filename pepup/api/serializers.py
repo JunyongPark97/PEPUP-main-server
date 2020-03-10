@@ -401,11 +401,12 @@ class StoreSerializer(serializers.ModelSerializer):
     review_count = serializers.SerializerMethodField()
     followers = serializers.SerializerMethodField()
     followings = serializers.SerializerMethodField()
+    user_followed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'nickname', 'profile', 'profile_introduce', 'review_score',
-                  'review_count', 'followers', 'followings']
+                  'review_count', 'followers', 'followings', 'user_followed']
 
     def get_profile(self, obj):
         if hasattr(obj.socialaccount_set.last(), 'extra_data'):
@@ -443,6 +444,10 @@ class StoreSerializer(serializers.ModelSerializer):
     def get_followings(self, obj):
         following = Follow.objects.filter(_from=obj, is_follow=True, tag__isnull=True)
         return following.count()
+
+    def get_user_followed(self, obj):
+        user_followed = self.context['user_followed']
+        return user_followed
 
 
 class StoreLikeSerializer(serializers.ModelSerializer):
