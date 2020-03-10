@@ -188,7 +188,8 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
         total_price = 0
         delivery_charge = 0
         for product in ordering_product:
-            payinfo = product.pop('payinfo')
+            payinfo_data = product.copy()
+            payinfo = payinfo_data.pop('payinfo')
             total_price = total_price + int(payinfo['total'])
             delivery_charge = delivery_charge + int(payinfo['delivery_charge'])
         return Response({"ordering_product": ordering_product,
