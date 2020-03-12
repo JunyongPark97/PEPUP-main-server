@@ -4,6 +4,7 @@ migrations/
 server_info.json
 accounts_info.json
 api_info.json
+payment_info.json
 .slack.json
 static
 settings/__init__.py

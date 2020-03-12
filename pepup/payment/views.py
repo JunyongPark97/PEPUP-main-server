@@ -292,6 +292,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # 에러 나는 경우 : 구매 중에 셀러가 할인가 적용시.
         ## 아직 payment 부르지도 않음. 검증과정.
         print(self.payment.deal_set.values_list('total', 'delivery_charge'))
+        print(self.request.data['price'])
         total_sum = self.payment.deal_set.aggregate(total_sum=Sum('total'))['total_sum']
         if not total_sum == int(self.request.data.get('price')):
             raise exceptions.NotAcceptable(detail='가격을 확인해주시길 바랍니다.')
@@ -320,12 +321,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
         memo = data.pop('memo')
         application_id = data.pop('application_id')
         trades = data.pop('trades')
+        print(trades)
         trades_list = []
 
         if type(trades[0]) == str:
             for trade in trades:
                 trades_list.append(int(trade))
-
+        else:
+            trades_list = trades
         price = int(price[0]) if type(price) == list else price
         address = address[0] if type(address) == list else address
         memo = memo[0] if type(memo) == list else memo
@@ -336,6 +339,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         val_data['address'] = address
         val_data['memo'] = memo
         val_data['application_id'] = application_id
+        print(val_data)
 
         self.serializer = self.get_serializer(data=val_data)
         if not self.serializer.is_valid():
