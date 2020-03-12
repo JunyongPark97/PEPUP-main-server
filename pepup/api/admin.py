@@ -12,7 +12,7 @@ from .models import Brand, Product, ProdThumbnail, Like, Tag, Follow, GenderDivi
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name','pk','seller','sold', 'is_refundable', 'price', 'on_discount', 'discount_rate','discounted_price', 'is_active']
-    list_editable = ('sold', 'is_refundable', 'discount_rate', 'on_discount')
+    list_editable = ('sold', 'is_refundable', 'discount_rate', 'on_discount', 'is_active')
     fields = ('seller', 'name', 'price', 'brand', 'first_category', 'second_category', 'size', 'content',
               'tag')
 

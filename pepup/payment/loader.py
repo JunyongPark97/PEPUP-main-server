@@ -5,7 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 _secrets = {}
-_secret_path = os.path.join(os.path.dirname(__file__), './../payment/api_info.json')
+_secret_path = os.path.join(os.path.dirname(__file__), './../payment/payment_info.json')
 if os.path.exists(_secret_path):
     with open(_secret_path) as f:
         _secrets = json.loads(f.read())
@@ -17,7 +17,7 @@ class empty(object):
 
 def load_credential(key, default=empty):
     """
-    환경 변수를 불러옵니다. (1순위: os.environ, 2순위: api_info.json)
+    환경 변수를 불러옵니다. (1순위: os.environ, 2순위: payment_info.json)
     """
     if key in os.environ:
         return os.environ[key]

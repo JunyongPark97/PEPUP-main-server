@@ -4,7 +4,7 @@ from accounts.models import User, DeliveryPolicy, Address
 from accounts.serializers import ThumbnailSerializer
 from api.serializers import ProductForTradeSerializer
 from .models import Trade, Deal, Payment, DeliveryMemo
-from api.loader import load_credential
+from payment.loader import load_credential
 
 
 class SellerForTradeSerializer(serializers.ModelSerializer):

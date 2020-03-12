@@ -12,12 +12,13 @@
         $.ajaxSetup({
             headers: {"Authorization": "Token f32aab65e009f2c4614d7396ea878a0ad4fdf163"}
         });
-        var trades = [12,18];
+        var trades = [90,91];
+        console.log(trades);
         jQuery.ajaxSettings.traditional = true;
         $.ajax({
             type: 'POST',
             url: '/api/payment/get_payform/',
-            data: {"trades": trades, 'price': 76800, 'address':'서울시 관악구', 'memo':'', 'application_id':1},
+            data: {"trades": trades, 'price': 900, 'address':'서울시 관악구', 'memo':'', 'application_id':1},
             async: false,
             traditional : true,
             success: function (data) {

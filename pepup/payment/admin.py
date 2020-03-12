@@ -18,30 +18,30 @@ class TradeAdmin(admin.ModelAdmin):
         if hasattr(obj, 'deal'):
             if hasattr(obj.deal, 'payment'):
                 return mark_safe('<a href={}>{}</a>'.format(
-                    reverse("admin:api_payment_change", args=(obj.deal.payment.pk,)),
+                    reverse("admin:payment_payment_change", args=(obj.deal.payment.pk,)),
                     obj.deal.payment
                 ))
         return '-'
 
 
 class DealAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'seller', 'buyer', 'payment_link', 'total', 'remain', 'delivery_charge', 'delivery_link']
+    list_display = ['pk', 'seller', 'buyer', 'total', 'remain', 'delivery_charge']
 
     def delivery_link(self, obj):
         return mark_safe('<a href={}>{}</a>'.format(
-            reverse("admin:api_delivery_change", args=(obj.delivery.pk,)),
+            reverse("admin:payment_delivery_change", args=(obj.delivery.pk,)),
             obj.delivery.get_state_display()
         ))
 
     def payment_link(self, obj):
         return mark_safe('<a href={}>{}</a>'.format(
-            reverse("admin:api_payment_change", args=(obj.payment.pk,)),
+            reverse("admin:payment_payment_change", args=(obj.payment.pk,)),
             obj.payment
         ))
 
 
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ['name','user', 'receipt_id', 'status','price','requested_at','purchased_at', 'revoked_at']
+    list_display = ['id','name','user', 'receipt_id', 'status','price','requested_at','purchased_at', 'revoked_at']
     list_filter = ('status','requested_at')
 
 
