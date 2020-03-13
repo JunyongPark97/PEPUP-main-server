@@ -141,16 +141,11 @@ class PaymentCancelSerialzier(serializers.ModelSerializer):
 
 
 class AddressSerializer(serializers.ModelSerializer):
-    nickname = serializers.SerializerMethodField()
     Addr = serializers.SerializerMethodField()
 
     class Meta:
         model = Address
-        fields = ['nickname', 'phone', 'Addr', 'detailAddr']
-
-    def get_nickname(self, obj):
-        nickname = obj.user.nickname
-        return nickname
+        fields = ['name', 'phone', 'zipNo', 'Addr', 'detailAddr']
 
     def get_phone(self, obj):
         phone = obj.user.phone
