@@ -24,25 +24,26 @@
     <title>Title</title>
 </head>
 <body>
-<script src="https://ssl.daumcdn.net/dmaps/map_js_init/postcode.v2.js"></script>
+<script src="https://ssl.daumcdn.net/dmaps/map_js_init/postcode.v2.js?autoload=false"></script>
 <script>
-  new daum.Postcode({
-    oncomplete: function(data) {
-      if(data.userSelectedType=="R"){
-        if(data.autoJibunAddress) {
-                window.pepup.setAddress(data.zonecode, data.autoJibunAddress, data.buildingName);
-        } else {
-                window.pepup.setAddress(data.zonecode, data.jibunAddress, data.buildingName);
+  daum.postcode.load(function(){
+    new daum.Postcode({
+      oncomplete: function(data) {
+        if(data.userSelectedType=="R"){
+          if(data.autoJibunAddress) {
+                  window.pepup.setAddress(data.zonecode, data.autoJibunAddress, data.buildingName);
+          } else {
+                  window.pepup.setAddress(data.zonecode, data.jibunAddress, data.buildingName);
+          }
         }
-      }
-      else{
-        window.pepup.setAddress(data.zonecode, data.jibunAddress, data.buildingName);
-      }
-
-    },
-  width : '100%',
-  height : '100%',
-  }).embed();
+        else{
+          window.pepup.setAddress(data.zonecode, data.jibunAddress, data.buildingName);
+        }
+      },
+    width : '100%',
+    height : '100%',
+    }).embed();
+  })
 </script>
 </body>
 </html>
