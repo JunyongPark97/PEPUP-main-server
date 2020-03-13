@@ -139,6 +139,8 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
             .prefetch_related('product__prodthumbnail__product') \
             .filter(buyer=self.buyer, status=1)
         if self.trades.filter(product__sold=True):
+            print('aaa')
+            print(self.trades.filter(product__sold=True))
             self.trades.filter(product__sold=True).delete()
         serializer = TradeSerializer(self.trades, many=True)
         return Response(self.groupbyseller(serializer.data))
@@ -209,20 +211,12 @@ class PaymentViewSet(viewsets.GenericViewSet):
         """
         1. filter된 trades들의 pk list가 request받은 pk와 같은 지 확인
         """
-        print(self.trades)
-        print('---')
-        print(self.trades.values_list('pk', flat=True))
-        print(self.trades_id)
         if not list(self.trades.values_list('pk', flat=True)) == self.trades_id:
-            print('chek trades')
             raise exceptions.NotAcceptable(detail='요청한 trade의 정보가 없거나, 잘못된 유저로 요청하였습니다.')
 
     def check_sold(self):
         sold_products = self.trades.filter(product__sold=True)
         if sold_products:
-            print('chek aaa')
-            print(sold_products)
-
             sold_products.delete()  # 만약 결제된 상품이면, 카트(trades)에서 삭제해야함.
             raise exceptions.NotAcceptable(detail='판매된 상품이 포함되어 있습니다.')
 
@@ -248,13 +242,10 @@ class PaymentViewSet(viewsets.GenericViewSet):
         else:
             volume = trades.count()
             if volume > seller.delivery_policy.volume and seller.delivery_policy.active_volume:
-                print('11')
                 delivery_charge = 0
             elif total_discounted_price > seller.delivery_policy.amount and seller.delivery_policy.active_amount:
-                print('22')
                 delivery_charge = 0
             else:
-                print('33')
                 delivery_charge = seller.delivery_policy.general  # 배송비 할인 없믕.
 
         return (
@@ -292,8 +283,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # for 문이 끝나고 생성된 payment의 total(할인된 가격이면 할인된 가격)을 계산해서 유저가 요청한 금액과 비교(유저 카트에서 계산해서 할인가 띄워줌: group_by_seller)
         # 에러 나는 경우 : 구매 중에 셀러가 할인가 적용시.
         ## 아직 payment 부르지도 않음. 검증과정.
-        print(self.payment.deal_set.values_list('total', 'delivery_charge'))
-        print(self.request.data['price'])
         total_sum = self.payment.deal_set.aggregate(total_sum=Sum('total'))['total_sum']
         if not total_sum == int(self.request.data.get('price')):
             raise exceptions.NotAcceptable(detail='가격을 확인해주시길 바랍니다.')
@@ -305,7 +294,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         self.payment.save()
         Delivery.objects.bulk_create(bulk_list_delivery)
 
-    @transaction.atomic
     @action(methods=['post'], detail=False, serializer_class=GetPayFormSerializer)
     def get_payform(self, request):
         """
@@ -317,12 +305,12 @@ class PaymentViewSet(viewsets.GenericViewSet):
 
         data = request.data.copy()
 
+        # replace type
         price = data.pop('price')
         address = data.pop('address')
         memo = data.pop('memo')
         application_id = data.pop('application_id')
         trades = data.pop('trades')
-        print(trades)
         trades_list = []
 
         if type(trades[0]) == str:
@@ -330,17 +318,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 trades_list.append(int(trade))
         else:
             trades_list = trades
+
         price = int(price[0]) if type(price) == list else price
         address = address[0] if type(address) == list else address
         memo = memo[0] if type(memo) == list else memo
         application_id = application_id[0] if type(application_id) == list else application_id
-        val_data = {}
-        val_data['trades'] = trades_list
-        val_data['price'] = price
-        val_data['address'] = address
-        val_data['memo'] = memo
-        val_data['application_id'] = application_id
-        print(val_data)
+        print(application_id)
+        val_data = {'trades': trades_list, 'price': price, 'address': address, 'memo': memo,
+                    'application_id': application_id}
 
         self.serializer = self.get_serializer(data=val_data)
         if not self.serializer.is_valid():
@@ -360,13 +345,15 @@ class PaymentViewSet(viewsets.GenericViewSet):
             self.create_payment()
             self.create_deals()
 
+        items = self.trades
+
         serializer = PayformSerializer(self.payment, context={
-            'addr': request.data.get('address'),
-            'application_id': request.data.get('application_id')
+            'addr': address,
+            'application_id': int(application_id),
+            'items': items
         })
-        print(serializer.data)
-        return Response({'results': {'payform': serializer.data, 'order_id': self.payment.id}},
-                        status=status.HTTP_200_OK)
+
+        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def confirm(self, request):
@@ -383,12 +370,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
         return Response(status=status.HTTP_200_OK)
 
     def get_access_token(self):
-        print('access in1')
         bootpay = BootpayApi(application_id=load_credential("application_id"),
                              private_key=load_credential("private_key"))
-        print(bootpay)
         result = bootpay.get_access_token()
-        print(result)
         if result['status'] is 200:
             return bootpay
         else:
@@ -410,21 +394,15 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # todo: https://docs.bootpay.co.kr/deep/submit 해당 링크를 보고 서버사이드 결제승인으로 바꿀 필요성 있음
         # todo: https://github.com/bootpay/server_python/blob/master/lib/BootpayApi.py 맨 밑줄
         if not (receipt_id or order_id):
-            print('데이ㅓㅌ가 ㅅ벙어여!!')
             raise exceptions.NotAcceptable(detail='request body is not validated')
         try:
-            print(order_id)
             payment = Payment.objects.get(id=order_id)
-            print(payment)
         except Payment.DoesNotExist:
-            print('errororror')
             raise exceptions.NotFound(detail='해당 order_id의 payment가 존재하지 않습니다.')
 
         bootpay = self.get_access_token()
-        print(bootpay)
         result = bootpay.verify(receipt_id)
         if result['status'] == 200:
-            print(payment.price, ':::', result['data']['price'])
             if payment.price == result['data']['price']:
                 serializer = PaymentDoneSerialzier(payment, data=result['data'])
                 if serializer.is_valid():
@@ -438,7 +416,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
                     return Response(status.HTTP_200_OK)
         else:
             result = bootpay.cancel('receipt_id')
-            print('not 200!!')
             serializer = PaymentCancelSerialzier(payment, data=result['data'])
             if serializer.is_valid():
                 serializer.save()

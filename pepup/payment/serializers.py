@@ -71,18 +71,25 @@ class GetPayFormSerializer(serializers.Serializer):
     application_id = serializers.IntegerField() # 1: web 2:android 3:ios
 
 
+# payment 에 사용되는 serializer
 class ItemSerializer(serializers.ModelSerializer):
     item_name = serializers.SerializerMethodField()
-    unique = serializers.CharField(source='pk')
-    price = serializers.IntegerField(source='total')
+    unique = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
     qty = serializers.IntegerField(default=1)
 
     class Meta:
-        model = Deal
+        model = Trade
         fields = ('item_name', 'unique', 'price', 'qty')
 
     def get_item_name(self, obj):
-        return obj.seller.email
+        return obj.product.name
+
+    def get_unique(self, obj):
+        return obj.product.pk
+
+    def get_price(self, obj):
+        return obj.product.discounted_price
 
 
 class PayformSerializer(serializers.ModelSerializer):
@@ -98,7 +105,8 @@ class PayformSerializer(serializers.ModelSerializer):
         fields = ['price', 'application_id', 'name', 'pg', 'method', 'items', 'user_info', 'order_id']
 
     def get_items(self, obj):
-        return ItemSerializer(obj.deal_set.all(), many=True).data
+        items = self.context['items']
+        return ItemSerializer(items, many=True).data
 
     def get_user_info(self, obj):
         return {
@@ -109,11 +117,13 @@ class PayformSerializer(serializers.ModelSerializer):
         }
 
     def get_application_id(self,obj):
-        if self.context.get('application_id') == '1':
+        print(self.context.get('application_id'))
+
+        if self.context.get('application_id') == 1:
             return load_credential('application_id_web')
-        elif self.context.get('application_id') == '2':
+        elif self.context.get('application_id') == 2:
             return load_credential('application_id_android')
-        elif self.context.get('application_id') == '3':
+        elif self.context.get('application_id') == 3:
             return load_credential('application_id_ios')
         else:
             return ""

@@ -53,7 +53,7 @@ class BaseNotificationType:
         return ""
 
     def image(self):
-        return ""
+        return "" # default image
 
     def icon(self):
         return ""
@@ -304,6 +304,7 @@ class UserFollowUser(BaseNotificationType):
 class UserNewAnswer(BaseNotificationType):
     """
     유저가 유저에게 답변이 도착하면 오는 메시지
+    # TODO : firebase 로 진행하면 채팅방으로 이동 불가?
     """
     action = 201
     is_readable = True
