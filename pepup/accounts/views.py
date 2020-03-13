@@ -5,6 +5,7 @@ from django.contrib.auth import (
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from django.http import Http404
+from django.shortcuts import render
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework.response import Response
@@ -587,6 +588,9 @@ class AddressViewSet(viewsets.ModelViewSet):
         obj.recent = True
         obj.save()
         return Response(status=status.HTTP_206_PARTIAL_CONTENT)
+
+    def search_address_page(self, request):
+        return render(request, 'address.html')
 
 
 
