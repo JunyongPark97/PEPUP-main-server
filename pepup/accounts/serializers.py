@@ -171,14 +171,14 @@ class CommonSerializer(serializers.Serializer):
 class SearchAddrSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['zipNo', 'roadAddr', 'jibunAddr']
+        fields = ['zipNo', 'Addr']
 
 
 class AddressSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Address
-        fields = ['id','name','zipNo', 'roadAddr', 'jibunAddr','detailAddr', 'recent']
+        fields = ['id','name','zipNo', 'Addr','detailAddr', 'recent']
 
 
 class KakaoSerializer(serializers.Serializer):

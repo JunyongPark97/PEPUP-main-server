@@ -141,7 +141,6 @@ class PaymentCancelSerialzier(serializers.ModelSerializer):
 
 
 class AddressSerializer(serializers.ModelSerializer):
-    Addr = serializers.SerializerMethodField()
 
     class Meta:
         model = Address
@@ -151,13 +150,6 @@ class AddressSerializer(serializers.ModelSerializer):
         phone = obj.user.phone
         return phone
 
-    def get_Addr(self, obj):
-        if obj.roadAddr:
-            return obj.roadAddr
-        elif obj.jibunAddr:
-            return obj.jibunAddr
-        else:
-            return None
 
 
 class UserNamenPhoneSerializer(serializers.ModelSerializer):
