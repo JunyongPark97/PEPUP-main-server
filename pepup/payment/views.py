@@ -220,7 +220,8 @@ class PaymentViewSet(viewsets.GenericViewSet):
     def check_sold(self):
         sold_products = self.trades.filter(product__sold=True)
         if sold_products:
-            print('chek trades')
+            print('chek aaa')
+            print(sold_products)
 
             sold_products.delete()  # 만약 결제된 상품이면, 카트(trades)에서 삭제해야함.
             raise exceptions.NotAcceptable(detail='판매된 상품이 포함되어 있습니다.')
@@ -363,6 +364,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
             'addr': request.data.get('address'),
             'application_id': request.data.get('application_id')
         })
+        print(serializer.data)
         return Response({'results': {'payform': serializer.data, 'order_id': self.payment.id}},
                         status=status.HTTP_200_OK)
 
@@ -381,9 +383,12 @@ class PaymentViewSet(viewsets.GenericViewSet):
         return Response(status=status.HTTP_200_OK)
 
     def get_access_token(self):
+        print('access in1')
         bootpay = BootpayApi(application_id=load_credential("application_id"),
                              private_key=load_credential("private_key"))
+        print(bootpay)
         result = bootpay.get_access_token()
+        print(result)
         if result['status'] is 200:
             return bootpay
         else:
