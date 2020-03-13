@@ -146,11 +146,6 @@ class AddressSerializer(serializers.ModelSerializer):
         model = Address
         fields = ['name', 'phone', 'zipNo', 'Addr', 'detailAddr']
 
-    def get_phone(self, obj):
-        phone = obj.user.phone
-        return phone
-
-
 
 class UserNamenPhoneSerializer(serializers.ModelSerializer):
     class Meta:

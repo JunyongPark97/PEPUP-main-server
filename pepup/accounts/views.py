@@ -575,7 +575,7 @@ class AddressViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors)
 
         # others recent = False
-        self.get_queryset().update(recent=False)
+        self.get_queryset().filter(user=user).update(recent=False)
 
         serializer.save(user=user)
 

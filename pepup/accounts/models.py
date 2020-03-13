@@ -102,6 +102,7 @@ class Address(models.Model):
     name = models.CharField(max_length=30, verbose_name='이름', default='')
     zipNo = models.CharField(max_length=10, verbose_name='우편번호')
     Addr = models.TextField(verbose_name='주소')
+    phone = models.CharField(max_length=19, verbose_name='전화번호')
     detailAddr = models.TextField(verbose_name='상세주소')
     recent = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)

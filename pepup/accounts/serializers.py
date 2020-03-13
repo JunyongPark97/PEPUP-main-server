@@ -178,7 +178,7 @@ class AddressSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Address
-        fields = ['id','name','zipNo', 'Addr','detailAddr', 'recent']
+        fields = ['id','phone','name','zipNo', 'Addr','detailAddr', 'recent']
 
 
 class KakaoSerializer(serializers.Serializer):
