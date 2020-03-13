@@ -589,8 +589,9 @@ class AddressViewSet(viewsets.ModelViewSet):
         obj.save()
         return Response(status=status.HTTP_206_PARTIAL_CONTENT)
 
-    def search_address_page(self, request):
-        return render(request, 'address.html')
+def search_address_page(request):
+    print('in')
+    return render(request, 'address.html')
 
 
 
