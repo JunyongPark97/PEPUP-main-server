@@ -570,7 +570,7 @@ class AddressViewSet(viewsets.ModelViewSet):
         :return: code and status
         """
         user = request.user
-        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors)
 
@@ -589,8 +589,8 @@ class AddressViewSet(viewsets.ModelViewSet):
         obj.save()
         return Response(status=status.HTTP_206_PARTIAL_CONTENT)
 
+
 def search_address_page(request):
-    print('in')
     return render(request, 'address.html')
 
 
