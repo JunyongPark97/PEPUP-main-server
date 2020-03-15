@@ -339,7 +339,7 @@ class ProductViewSet(viewsets.GenericViewSet):
             is_liked = like.is_liked
         except Like.DoesNotExist:
             is_liked = False
-        is_bagged = Trade.objects.filter(product=product, buyer=user)
+        is_bagged = Trade.objects.filter(product=product, buyer=user, status=1)
         if is_bagged.exists():
             bagged = True
         else:

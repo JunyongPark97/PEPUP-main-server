@@ -96,6 +96,7 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
             if self.status == 5:
                 self.status = 6 # deal: 정산완료
                 self.trade_set.update(status=6) # trade: 정산완료
+                self.remain = 0
             else:
                 raise Exception('Cannot be settle before confirm trade')
 

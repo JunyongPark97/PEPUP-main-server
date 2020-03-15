@@ -448,9 +448,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
                     # walletlog 생성 : 정산은 walletlog를 통해서만 정산
                     for deal in payment.deal_set.all():
                         WalletLog.objects.create(deal=deal, user=deal.seller)
-                    # # payment : 결제완료
-                    # payment.status = 1
-                    # payment.save()
                     return Response(status.HTTP_200_OK)
         else:
             result = bootpay.cancel('receipt_id')
@@ -461,9 +458,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 Trade.objects.filter(deal__payment=payment).update(status=-3) #결제되었다가 취소이므로 환불.
                 # deal : bootpay 환불 완료
                 payment.deal_set.all().update(status=-3)
-                # # payment : 결제 취소
-                # payment.status = 20
-                # payment.save()
                 return Response({'detail': 'canceled'}, status=status.HTTP_200_OK)
 
         # todo: http stateless 특성상 데이터 집계가 될수 없을 수도 있어서 서버사이드랜더링으로 고쳐야 함...

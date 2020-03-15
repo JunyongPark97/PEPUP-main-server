@@ -50,7 +50,7 @@ class PaymentAdmin(admin.ModelAdmin):
 
 
 class WalletLogAdmin(admin.ModelAdmin):
-    list_display = ['id','user', 'user_bank_info', 'deal_link', 'status','created_at','updated_at', 'is_settled']
+    list_display = ['id','user', 'user_bank_info', 'deal_link','deal_remain', 'status','created_at','updated_at', 'is_settled']
     list_filter = ['status', 'created_at']
     list_editable = ['is_settled']
 
@@ -68,6 +68,10 @@ class WalletLogAdmin(admin.ModelAdmin):
                 obj.deal
             ))
         return '-'
+
+    def deal_remain(self, obj):
+        if obj.deal:
+            return '{} 원'.format(obj.deal.remain)
 
 
 class DeliveryMemoAdmin(admin.ModelAdmin):
