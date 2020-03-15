@@ -11,12 +11,12 @@ class CommissionAdmin(admin.ModelAdmin):
 
 
 class TradeAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'product', 'seller', 'buyer', 'payment', 'deal', 'status']
+    list_display = ['pk', 'buyer', 'product', 'seller',  'payment', 'deal', 'status', 'created_at', 'updated_at']
     list_filter = ('status',)
 
     def payment(self, obj):
-        if hasattr(obj, 'deal'):
-            if hasattr(obj.deal, 'payment'):
+        if obj.deal:
+            if obj.deal.payment:
                 return mark_safe('<a href={}>{}</a>'.format(
                     reverse("admin:payment_payment_change", args=(obj.deal.payment.pk,)),
                     obj.deal.payment
@@ -25,7 +25,7 @@ class TradeAdmin(admin.ModelAdmin):
 
 
 class DealAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'seller', 'buyer', 'total', 'remain', 'delivery_charge']
+    list_display = ['pk', 'buyer', 'seller', 'delivery_link', 'payment_link', 'total', 'remain', 'delivery_charge']
 
     def delivery_link(self, obj):
         return mark_safe('<a href={}>{}</a>'.format(
@@ -34,10 +34,12 @@ class DealAdmin(admin.ModelAdmin):
         ))
 
     def payment_link(self, obj):
-        return mark_safe('<a href={}>{}</a>'.format(
-            reverse("admin:payment_payment_change", args=(obj.payment.pk,)),
-            obj.payment
-        ))
+        if obj.payment:
+            return mark_safe('<a href={}>{}</a>'.format(
+                reverse("admin:payment_payment_change", args=(obj.payment.pk,)),
+                obj.payment
+            ))
+        return '-'
 
 
 class PaymentAdmin(admin.ModelAdmin):
