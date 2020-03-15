@@ -24,7 +24,7 @@ from .Bootpay import BootpayApi
 # model
 from accounts.models import User, DeliveryPolicy
 from .loader import load_credential
-from .models import Payment, Trade, Deal, Delivery, DeliveryMemo, TradeErrorLog, PaymentErrorLog
+from .models import Payment, Trade, Deal, Delivery, DeliveryMemo, TradeErrorLog, PaymentErrorLog, WalletLog
 from payment.models import Commission
 
 # serializer
@@ -137,7 +137,7 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
             .select_related('product', 'product__size', 'product__size__category', 'product__brand',
                             'product__second_category') \
             .prefetch_related('product__prodthumbnail__product') \
-            .filter(buyer=self.buyer, status=1)
+            .filter(buyer=self.buyer, status__in=[1, 11, 12])
         if self.trades.filter(product__sold=True):
             print('aaa')
             print(self.trades.filter(product__sold=True))
@@ -388,7 +388,10 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # trade : 결제 확인
         Trade.objects.filter(deal__payment=payment).update(status=12)
 
-        # 결제 승인 전
+        # deal : 결제 확인
+        payment.deal_set.all().update(status=12)
+
+        # payment: 결제 승인 전
         payment.update(status=2)
 
         return Response(status=status.HTTP_200_OK)
@@ -433,6 +436,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # trade : bootpay 결제 완료
         Trade.objects.filter(deal__payment=payment).update(status=13)
 
+        # deal : bootpay 결제 완료
+        payment.deal_set.all().update(status=13)
+
         bootpay = self.get_access_token()
         result = bootpay.verify(receipt_id)
         if result['status'] == 200:
@@ -447,6 +453,11 @@ class PaymentViewSet(viewsets.GenericViewSet):
                     # 하위 trade 2번처리 : 결제완료
                     trades = Trade.objects.filter(deal__payment=payment)
                     trades.update(status=2)
+                    # deal : 결제완료
+                    payment.deal_set.all().update(status=2)
+                    # walletlog 생성 : 정산은 walletlog를 통해서만 정산
+                    for deal in payment.deal_set.all():
+                        WalletLog.objects.create(deal=deal, user=deal.seller)
                     # payment : 결제완료
                     payment.status = 1
                     payment.save()
@@ -456,9 +467,12 @@ class PaymentViewSet(viewsets.GenericViewSet):
             serializer = PaymentCancelSerialzier(payment, data=result['data'])
             if serializer.is_valid():
                 serializer.save()
+                # trade : bootpay 환불 완료
                 Trade.objects.filter(deal__payment=payment).update(status=-3) #결제되었다가 취소이므로 환불.
-                # 결제 취소
-                payment.status=20
+                # deal : bootpay 환불 완료
+                payment.deal_set.all().update(status=-3)
+                # payment : 결제 취소
+                payment.status = 20
                 payment.save()
                 return Response({'detail': 'canceled'}, status=status.HTTP_200_OK)
 

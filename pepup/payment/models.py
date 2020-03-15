@@ -53,12 +53,50 @@ class Payment(models.Model):
 
 
 class Deal(models.Model):  # 돈 관련 (스토어 별로)
+
+    STATUS = [
+        (1, '결제시작'), # get_payform
+        (12, '결제확인'), # confirm
+        (13, '부트페이 결제완료'), # done 진입 시
+        (2, '결제완료'),  # payment/done/ 처리시 바뀜 = 배송전 , noti 날려주기.
+        (3, '운송장입력완료'),     # 운송장번호 입력시 바꿔줌
+        (4, '배송중'),
+        (5, '거래완료'),  # 셀러한테 noti 날려주기. // 리뷰남겼을떄, 운송장 번호 5일 후 (자동구매확정)
+        (6, '정산완료'),  # 정산처리 후 admin 필요
+        (-1, '환불신청'),
+        (-2, '환불승인'),
+        (-3, '환불완료'),
+        (-20, '기타처리'),
+    ]
+
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
     payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL)
     total = models.IntegerField(verbose_name='결제금액')
-    remain = models.IntegerField(verbose_name='잔여금')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
-    delivery_charge = models.IntegerField(verbose_name='배송비')
+    remain = models.IntegerField(verbose_name='잔여금(정산금액)')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
+    delivery_charge = models.IntegerField(verbose_name='배송비(참고)')
+    status = models.IntegerField(choices=STATUS, default=1)
+    is_settled = models.BooleanField(default=False, help_text="정산 여부(신중히 다뤄야 함)", verbose_name="정산여부(신중히)")
+
+    def save(self, *args, **kwargs):
+        self._transaction_completed()
+        self._check_settlable()
+        super(Deal, self).save(*args, **kwargs)
+
+    def _transaction_completed(self):
+        # 운송장 번호 입력 후 5일 or 리뷰 남겼을 때 status = 5
+        if self.status == 5:
+            self.delivery.states = 'step6'
+            self.trade_set.update(status=5)
+
+    def _check_settlable(self):
+        if self.is_settled:
+            # 5(거래완료)는 리뷰 작성시 or 운송장 번호 입력 후 5일 이후
+            if self.status == 5:
+                self.status = 6
+                self.trade_set.update(status=6)
+            else:
+                raise Exception('Cannot be settle before confirm trade')
 
 
 # todo: payment on delete -> setnull
@@ -69,14 +107,16 @@ class Delivery(models.Model):
     STEP3 = 'step3'
     STEP4 = 'step4'
     STEP5 = 'step5'
+    STEP6 = 'step6'
 
     states = [
         (STEP0, '운송장입력전'),
-        (STEP1, '상품인수'),
-        (STEP2, '상품이동중'),
-        (STEP3, '배달지도착'),
-        (STEP4, '배송출발'),
-        (STEP5, '배송완료')
+        (STEP1, '운송장입력완료'),
+        (STEP2, '상품인수'),
+        (STEP3, '상품이동중'),
+        (STEP4, '배달지도착'),
+        (STEP5, '배송출발'),
+        (STEP6, '배송완료')
     ]
 
     codes = [
@@ -110,6 +150,7 @@ class Delivery(models.Model):
     state = models.TextField(choices=states,default='step0')
     code = models.TextField(choices=codes, verbose_name='택배사코드')
     number = models.TextField(verbose_name='운송장번호')
+    number_created_time = models.DateTimeField(null=True, blank=True , help_text="운송장 번호 입력 시간")
 
 
 class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
@@ -143,11 +184,14 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
 class TradeLog(models.Model):
     STATUS = [
         (1, '결제전'),
-        (2, '결제완료'),
-        (3, '배송중'),
+        (11, '결제시작'),  # get_payform
+        (12, '결제확인'),  # confirm
+        (13, '부트페이 결제완료'),  # done 진입 시
+        (2, '결제완료'),  # payment/done/ 처리시 바뀜 = 배송전 , noti 날려주기.
+        (3, '배송중'),  # 운송장번호 입력시 바꿔줌
         (4, '배송완료'),
-        (5, '거래완료'),
-        (6, '정산완료'),
+        (5, '거래완료'),  # 셀러한테 noti 날려주기. // 리뷰남겼을떄, 운송장 번호 5일 후 (자동구매확정)
+        (6, '정산완료'),  # 정산처리 후 admin 필요
         (-1, '환불신청'),
         (-2, '환불승인'),
         (-3, '환불완료'),
@@ -191,12 +235,39 @@ class PaymentErrorLog(models.Model):
 
 
 class WalletLog(models.Model):
+    """
+    정산을 수행하는 모델입니다.
+    """
+    STATUS = [
+        (1, '정산대기'),
+        (2, '정산완료'),
+        (99, '기타')
+    ]
+    status = models.IntegerField(choices=STATUS, default=1)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
-    amount = models.IntegerField()
-    log = models.TextField(verbose_name='로그')
-    deal = models.ForeignKey(Deal, blank=True, null=True, on_delete=models.PROTECT)
+    amount = models.IntegerField(help_text="정산금액", default=0)
+    log = models.TextField(verbose_name='로그 및 특이사항')
+    deal = models.OneToOneField(Deal, blank=True, null=True, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_settled = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "정산 관리"
+        verbose_name_plural = "정산 관리"
+
+    def save(self, *args, **kwargs):
+        self._check_deal_status()
+        super(WalletLog, self).save(*args, **kwargs)
+
+    def _check_deal_status(self):
+        if self.is_settled:
+            deal = self.deal
+            if deal.status == 6 or deal.is_settled or not deal.status == 5:
+                raise Exception('정산이 불가한 상태입니다.')
+            self.status = 2
+            self.deal.is_settled = True
+            self.deal.save()
 
 
 def review_directory_path(instance, filename):

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from payment.models import Commission, WalletLog, Trade, Deal, Payment, Review, DeliveryMemo
+from payment.models import Commission, WalletLog, Trade, Deal, Payment, Review, DeliveryMemo, PaymentErrorLog
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
@@ -25,7 +25,9 @@ class TradeAdmin(admin.ModelAdmin):
 
 
 class DealAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'buyer', 'seller', 'delivery_link', 'payment_link', 'total', 'remain', 'delivery_charge']
+    list_display = ['pk', 'buyer', 'seller', 'delivery_link', 'payment_link', 'total', 'remain',
+                    'status', 'is_settled']
+    list_filter = ['status', 'is_settled']
 
     def delivery_link(self, obj):
         return mark_safe('<a href={}>{}</a>'.format(
@@ -47,6 +49,27 @@ class PaymentAdmin(admin.ModelAdmin):
     list_filter = ('status','requested_at')
 
 
+class WalletLogAdmin(admin.ModelAdmin):
+    list_display = ['id','user', 'user_bank_info', 'deal_link', 'status','created_at','updated_at', 'is_settled']
+    list_filter = ['status', 'created_at']
+    list_editable = ['is_settled']
+
+    def user_bank_info(self, obj):
+        store_account = obj.deal.seller.account
+        bank = store_account.get_bank_display()
+        account = store_account.account
+        holder = store_account.account_holder
+        return '[예금주: {}] {}, {}'.format(holder, bank, account)
+
+    def deal_link(self, obj):
+        if obj.deal:
+            return mark_safe('<a href={}>{}</a>'.format(
+                reverse("admin:payment_deal_change", args=(obj.deal.pk,)),
+                obj.deal
+            ))
+        return '-'
+
+
 class DeliveryMemoAdmin(admin.ModelAdmin):
     list_display = ['id', 'memo', 'is_active', 'order']
     list_editable = ['order']
@@ -56,7 +79,8 @@ admin.site.register(Commission, CommissionAdmin)
 admin.site.register(Trade, TradeAdmin)
 admin.site.register(Deal, DealAdmin)
 admin.site.register(Payment, PaymentAdmin)
-admin.site.register(WalletLog)
+admin.site.register(WalletLog, WalletLogAdmin)
 admin.site.register(Review)
 admin.site.register(DeliveryMemo, DeliveryMemoAdmin)
+admin.site.register(PaymentErrorLog)
 

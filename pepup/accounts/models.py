@@ -156,5 +156,5 @@ class StoreAccount(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='account')
     bank = models.IntegerField(choices=BANK)
-    account = models.IntegerField()
+    account = models.CharField(max_length=100)
     account_holder = models.CharField(max_length=30)
