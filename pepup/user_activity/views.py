@@ -8,7 +8,10 @@ from rest_framework import status, viewsets
 from django.db.models import Count
 from django.db.models.functions import TruncDate
 from payment.models import Deal, Review
-from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer
+from payment.serializers import TradeSerializer, UserNamenPhoneSerializer, AddressSerializer
+from payment.utils import groupbyseller
+from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer, \
+    SimpleWaybillSerializer
 
 
 class PurchasedViewSet(viewsets.ModelViewSet):
@@ -39,6 +42,53 @@ class PurchasedViewSet(viewsets.ModelViewSet):
             # list_data.append(group_by_date)
 
         return Response(group_by_date, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, *args, **kwargs):
+        deal = self.get_object()
+        user = request.user
+
+        if deal.buyer != user:
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        trades = deal.trade_set.all()
+        trade_serializer = TradeSerializer(trades, many=True)
+        data = groupbyseller(trade_serializer.data)[0]
+        data.pop('payinfo')
+
+        # ordered product info
+        ordering_product = data
+
+        # user info
+        user_info = UserNamenPhoneSerializer(user).data
+
+        # address
+        addresses = user.address_set.filter(recent=True)
+        if addresses:
+            addr = AddressSerializer(addresses.last()).data
+        else:
+            addr = None
+
+        # pay info : price, delivery_charge, total
+        price = 0
+        for trade in trades:
+            dis_price = trade.product.discounted_price
+            price += dis_price
+        delivery_charge = deal.delivery_charge
+        total = deal.total
+
+        # waybill info
+        delivery = deal.delivery
+        if delivery.code and delivery.number:
+            waybill = SimpleWaybillSerializer(delivery).data
+        else:
+            waybill = None
+
+        return Response({"ordering_product": ordering_product,
+                         "user_info": user_info,
+                         "pay_info":
+                             {"price": price, "delivery_charge": delivery_charge, "total": total},
+                         "address": addr,
+                         "waybill": waybill})
 
     @action(methods=['post'], detail=True)
     def leave_review(self, request, *args, **kwargs):

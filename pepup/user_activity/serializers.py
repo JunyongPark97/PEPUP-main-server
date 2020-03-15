@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from payment.models import Deal, Review
+from payment.models import Deal, Review, Delivery
 
 
 class PurchasedDealSerializer(serializers.ModelSerializer):
@@ -74,3 +74,15 @@ class ReviewRetrieveSerializer(serializers.ModelSerializer):
     def get_satisfaction(self, obj):
         satisfaction = float(obj.satisfaction)
         return satisfaction
+
+
+class SimpleWaybillSerializer(serializers.ModelSerializer):
+    code = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Delivery
+        fields = ['code', 'number']
+
+    def get_code(self, obj):
+        code = obj.get_code_display()
+        return code
