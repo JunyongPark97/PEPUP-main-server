@@ -355,9 +355,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
             'items': items
         })
 
-        # return Response({'results': serializer.data}, status=status.HTTP_200_OK)
-        return Response({'results': {'payform': serializer.data, 'order_id': self.payment.id}},
-                        status=status.HTTP_200_OK)
+        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+        # return Response({'results': {'payform': serializer.data, 'order_id': self.payment.id}},
+        #                 status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def confirm(self, request):
