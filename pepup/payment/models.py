@@ -77,6 +77,7 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
     delivery_charge = models.IntegerField(verbose_name='배송비(참고)')
     status = models.IntegerField(choices=STATUS, default=1)
     is_settled = models.BooleanField(default=False, help_text="정산 여부(신중히 다뤄야 함)", verbose_name="정산여부(신중히)")
+    transaction_completed_date = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self._transaction_completed()
@@ -93,8 +94,8 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
         if self.is_settled:
             # 5(거래완료)는 리뷰 작성시 or 운송장 번호 입력 후 5일 이후
             if self.status == 5:
-                self.status = 6
-                self.trade_set.update(status=6)
+                self.status = 6 # deal: 정산완료
+                self.trade_set.update(status=6) # trade: 정산완료
             else:
                 raise Exception('Cannot be settle before confirm trade')
 
@@ -150,16 +151,14 @@ class Delivery(models.Model):
     state = models.TextField(choices=states,default='step0')
     code = models.TextField(choices=codes, verbose_name='택배사코드')
     number = models.TextField(verbose_name='운송장번호')
-    number_created_time = models.DateTimeField(null=True, blank=True , help_text="운송장 번호 입력 시간")
+    # 운송장 번호 입력 시간 : 이 시간을 기준으로 5일 이후 자동으로 deal 의 거래 완료 처리
+    number_created_time = models.DateTimeField(null=True, blank=True, help_text="운송장 번호 입력 시간")
 
 
 class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
 
     STATUS = [
         (1, '결제전'),
-        (11, '결제시작'), # get_payform
-        (12, '결제확인'), # confirm
-        (13, '부트페이 결제완료'), # done 진입 시
         (2, '결제완료'),  # payment/done/ 처리시 바뀜 = 배송전 , noti 날려주기.
         (3, '배송중'),     # 운송장번호 입력시 바꿔줌
         (4, '배송완료'),
@@ -184,9 +183,6 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
 class TradeLog(models.Model):
     STATUS = [
         (1, '결제전'),
-        (11, '결제시작'),  # get_payform
-        (12, '결제확인'),  # confirm
-        (13, '부트페이 결제완료'),  # done 진입 시
         (2, '결제완료'),  # payment/done/ 처리시 바뀜 = 배송전 , noti 날려주기.
         (3, '배송중'),  # 운송장번호 입력시 바꿔줌
         (4, '배송완료'),

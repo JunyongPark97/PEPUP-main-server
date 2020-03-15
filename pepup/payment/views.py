@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.shortcuts import render
 import json
 import uuid
@@ -137,10 +139,8 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
             .select_related('product', 'product__size', 'product__size__category', 'product__brand',
                             'product__second_category') \
             .prefetch_related('product__prodthumbnail__product') \
-            .filter(buyer=self.buyer, status__in=[1, 11, 12])
+            .filter(buyer=self.buyer, status=1)
         if self.trades.filter(product__sold=True):
-            print('aaa')
-            print(self.trades.filter(product__sold=True))
             self.trades.filter(product__sold=True).delete()
         serializer = TradeSerializer(self.trades, many=True)
         return Response(self.groupbyseller(serializer.data))
@@ -355,10 +355,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
             'items': items
         })
 
-        # 결제 시작
-        self.trades.update(status=11)
-
-        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+        # return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'results': {'payform': serializer.data, 'order_id': self.payment.id}},
+                        status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def confirm(self, request):
@@ -385,12 +384,8 @@ class PaymentViewSet(viewsets.GenericViewSet):
         payment.receipt_id = request.data.get('receipt_id')
         payment.save()
 
-        # trade : 결제 확인
-        Trade.objects.filter(deal__payment=payment).update(status=12)
         # deal : 결제 확인
         payment.deal_set.all().update(status=12)
-        # payment: 결제 승인 전
-        payment.update(status=2)
 
         return Response(status=status.HTTP_200_OK)
 
@@ -431,9 +426,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         payment.status = 3
         payment.save()
 
-        # trade : bootpay 결제 완료
-        Trade.objects.filter(deal__payment=payment).update(status=13)
-
         # deal : bootpay 결제 완료
         payment.deal_set.all().update(status=13)
 
@@ -451,14 +443,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
                     # 하위 trade 2번처리 : 결제완료
                     trades = Trade.objects.filter(deal__payment=payment)
                     trades.update(status=2)
-                    # deal : 결제완료
-                    payment.deal_set.all().update(status=2)
+                    # deal : 결제완료, 거래 시간 저장
+                    payment.deal_set.update(status=2, transaction_completed_date=datetime.now())
                     # walletlog 생성 : 정산은 walletlog를 통해서만 정산
                     for deal in payment.deal_set.all():
                         WalletLog.objects.create(deal=deal, user=deal.seller)
-                    # payment : 결제완료
-                    payment.status = 1
-                    payment.save()
+                    # # payment : 결제완료
+                    # payment.status = 1
+                    # payment.save()
                     return Response(status.HTTP_200_OK)
         else:
             result = bootpay.cancel('receipt_id')
@@ -469,9 +461,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 Trade.objects.filter(deal__payment=payment).update(status=-3) #결제되었다가 취소이므로 환불.
                 # deal : bootpay 환불 완료
                 payment.deal_set.all().update(status=-3)
-                # payment : 결제 취소
-                payment.status = 20
-                payment.save()
+                # # payment : 결제 취소
+                # payment.status = 20
+                # payment.save()
                 return Response({'detail': 'canceled'}, status=status.HTTP_200_OK)
 
         # todo: http stateless 특성상 데이터 집계가 될수 없을 수도 있어서 서버사이드랜더링으로 고쳐야 함...
