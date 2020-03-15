@@ -31,6 +31,7 @@ urlpatterns = [
     # path('api/chat/', include('chat.urls')),
     path('accounts/', include('accounts.urls')),
     path('api/', include('payment.urls')),
+    path('api/', include('user_activity.urls')),
 
     path('', include('landing.urls')),
     # ckeditor

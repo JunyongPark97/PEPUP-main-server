@@ -25,8 +25,8 @@ class TradeAdmin(admin.ModelAdmin):
 
 
 class DealAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'buyer', 'seller', 'delivery_link', 'payment_link', 'total', 'remain',
-                    'status', 'is_settled']
+    list_display = ['pk', 'buyer', 'seller', 'delivery_link', 'payment_link', 'transaction_completed_date',
+                    'total', 'remain', 'status', 'is_settled']
     list_filter = ['status', 'is_settled']
 
     def delivery_link(self, obj):
@@ -72,6 +72,9 @@ class WalletLogAdmin(admin.ModelAdmin):
     def deal_remain(self, obj):
         if obj.deal:
             return '{} 원'.format(obj.deal.remain)
+
+    deal_remain.short_description = "남은 정산액"
+    user_bank_info.short_description = "판매자 계좌정보"
 
 
 class DeliveryMemoAdmin(admin.ModelAdmin):

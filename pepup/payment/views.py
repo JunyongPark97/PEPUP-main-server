@@ -290,8 +290,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
         if not total_sum == int(self.request.data.get('price')):
             raise exceptions.NotAcceptable(detail='가격을 확인해주시길 바랍니다.')
         self.payment.price = total_sum
-        if self.payment.deal_set.count() > 1:
-            self.payment.name = self.trades.first().product.name + ' 외 ' + str(self.payment.deal_set.count() - 1) + '건'
+
+        if self.trades.count() > 1:
+            self.payment.name = self.trades.first().product.name + ' 외 ' + str(self.trades.count() - 1) + '건'
         else:
             self.payment.name = self.trades.first().product.name
         self.payment.save()

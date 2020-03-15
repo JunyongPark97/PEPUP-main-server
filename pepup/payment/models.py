@@ -1,4 +1,6 @@
-from django.core.validators import MinValueValidator,MaxValueValidator
+import os
+
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from django.db import models
 from django.conf import settings
 from imagekit.models import ProcessedImageField
@@ -28,7 +30,7 @@ class Payment(models.Model):
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='유저')
-    receipt_id = models.CharField(max_length=100, verbose_name='영수증키')
+    receipt_id = models.CharField(max_length=100, verbose_name='영수증키', db_index=True)
     status = models.IntegerField(choices=STATUS, verbose_name='결제상태', default=0)
 
     price = models.IntegerField(verbose_name='결제금액', null=True)
@@ -75,13 +77,14 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
     total = models.IntegerField(verbose_name='결제금액')
     remain = models.IntegerField(verbose_name='잔여금(정산금액)')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
     delivery_charge = models.IntegerField(verbose_name='배송비(참고)')
-    status = models.IntegerField(choices=STATUS, default=1)
+    status = models.IntegerField(choices=STATUS, default=1, db_index=True)
     is_settled = models.BooleanField(default=False, help_text="정산 여부(신중히 다뤄야 함)", verbose_name="정산여부(신중히)")
     transaction_completed_date = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self._transaction_completed()
         self._check_settlable()
+        self._sync_refund_wallet()
         super(Deal, self).save(*args, **kwargs)
 
     def _transaction_completed(self):
@@ -99,6 +102,11 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
                 self.remain = 0
             else:
                 raise Exception('Cannot be settle before confirm trade')
+
+    def _sync_refund_wallet(self):
+        if self.status == -3:
+            self.walletlog.status=-3
+            self.walletlog.save()
 
 
 # todo: payment on delete -> setnull
@@ -238,6 +246,7 @@ class WalletLog(models.Model):
     STATUS = [
         (1, '정산대기'),
         (2, '정산완료'),
+        (-3, '환불처리'),
         (99, '기타')
     ]
     status = models.IntegerField(choices=STATUS, default=1)
@@ -282,7 +291,7 @@ class Review(models.Model):
         upload_to=review_directory_path,  # 저장 위치
         processors=[ResizeToFill(300, 300)],  # 사이즈 조정
         format='JPEG',  # 최종 저장 포맷
-        options={'quality': 70})
+        options={'quality': 60})
     created_at = models.DateTimeField(auto_now_add=True)
 
 

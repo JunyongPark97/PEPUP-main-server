@@ -1,35 +1,81 @@
-from datetime import datetime
+import os
 
-from django.shortcuts import render
-import json
-import uuid
-
-import requests
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import authentication, mixins
-from rest_framework.decorators import authentication_classes, action
 from rest_framework import status, viewsets
-from rest_framework import exceptions
 
-from django.db.models import F, Sum, Count, ExpressionWrapper
-from django.http import Http404, JsonResponse
-from django.shortcuts import render
-from django.db.models import Q as q
-from django.db import transaction
-from django.db.models import IntegerField, Value, Case, When
-from django.db.models.functions import Ceil
-
-from payment.models import Deal
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from payment.models import Deal, Review
+from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer
 
 
 class PurchasedViewSet(viewsets.ModelViewSet):
-    serializer_class = None
+    serializer_class = PurchasedDealSerializer
     permission_classes = [IsAuthenticated, ]
-    queryset = Deal.objects.all()
+    queryset = Deal.objects.all().prefetch_related('trade_set', 'trade_set__product', 'trade_set__product__prodthumbnail')\
+                                 .select_related('review')
 
     def list(self, request, *args, **kwargs):
+        """
+        quseyset status in [2,3,4,5,6] <- 수정하면 안돼요
+        수정시 serialzier 의 status 가 바뀔 수 있으니 주의해주세요
+        """
         user = request.user
-        queryset = self.get_queryset().filter(buyer=user).filter(status__in=[2, 3, 4, 5, 6])
+        queryset = self.get_queryset().filter(buyer=user).filter(status__in=[2, 3, 4, 5, 6])\
+                                      .filter(transaction_completed_date__isnull=False)
+        dates = queryset.annotate(date=TruncDate('transaction_completed_date'))\
+            .values('date').annotate(c=Count('id')).order_by()
+        # list_data = []
+        group_by_date = {}
+        for date in dates:
+            date = date['date']
+            group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).filter(date=date)
+            serialized_data = self.get_serializer(group_by_date_qs, many=True)
+            group_by_date[str(date)] = serialized_data.data
+            # group_by_date['date']= str(date)
+            # group_by_date['data']= serialized_data.data
+            # list_data.append(group_by_date)
 
+        return Response(group_by_date, status=status.HTTP_200_OK)
+
+    @action(methods=['post'], detail=True)
+    def leave_review(self, request, *args, **kwargs):
+        data = request.data.copy()
+        deal = self.get_object()
+
+        # get data
+        seller = deal.seller
+        data.update({'seller': seller.id})
+        data.update({'deal': deal.id})
+
+        # update
+        if hasattr(deal, 'review'):
+            serializer = ReviewSerializer(deal.review, data=data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(status=status.HTTP_206_PARTIAL_CONTENT)
+
+        serializer = ReviewSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # deal status = 5 -> 거래 완료 처리 : 정산 가능
+        deal.status = 5
+        deal.save()
+
+        return Response(status=status.HTTP_201_CREATED)
+
+    @action(methods=['get'], detail=True)
+    def review(self, request, *args, **kwargs):
+        deal = self.get_object()
+
+        # review 가 없는 경우, 대표이미지와 별점 0점을 default 로 return
+        if not hasattr(deal, 'review'):
+            url = deal.trade_set.first().product.prodthumbnail.image_url
+            return Response({'deal_thumbnail': url, "satisfaction": float(0)}, status=status.HTTP_200_OK)
+
+        review = deal.review
+        serializer = ReviewRetrieveSerializer(review)
+        return Response(serializer.data, status=status.HTTP_200_OK)
