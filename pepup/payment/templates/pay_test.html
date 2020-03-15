@@ -10,15 +10,15 @@
 <script>
     function pay() {
         $.ajaxSetup({
-            headers: {"Authorization": "Token f32aab65e009f2c4614d7396ea878a0ad4fdf163"}
+            headers: {"Authorization": "Token 5d193127ec9c1e2d416c8c932c2438d3d077d89d"}
         });
-        var trades = [90,91];
+        var trades = [103];
         console.log(trades);
         jQuery.ajaxSettings.traditional = true;
         $.ajax({
             type: 'POST',
             url: '/api/payment/get_payform/',
-            data: {"trades": trades, 'price': 900, 'address':'서울시 관악구', 'memo':'', 'application_id':1},
+            data: {"trades": trades, 'price': 400, 'address':'서울시 관악구', 'memo':'', 'application_id':1},
             async: false,
             traditional : true,
             success: function (data) {
@@ -30,7 +30,7 @@
                 } else {
                     var order_id = data['results']['order_id']
                     BootPay.request(
-                        data['results']['payform']
+                        data['results']
                     ).error(function (data) {
                         //결제 진행시 에러가 발생하면 수행됩니다.
                         console.log(data);

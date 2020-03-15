@@ -99,6 +99,11 @@ class Tag(models.Model):
 
 
 class Product(models.Model):
+    SOLD_STATUS = [
+        (1, 'by payment'),
+        (2, 'by user')
+    ]
+
     name = models.CharField(max_length=100, verbose_name='상품명')
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
     size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='product', null=True)
@@ -108,6 +113,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='수정일')
     sold = models.BooleanField(default=False, verbose_name='판매완료')
+    sold_status = models.IntegerField(choices=SOLD_STATUS, null=True, blank=True)
     on_discount = models.BooleanField(default=False, verbose_name='세일중')
     discount_rate = models.FloatField(default=0, verbose_name='할인율')
     first_category = models.ForeignKey(FirstCategory, on_delete=models.CASCADE, null=True)

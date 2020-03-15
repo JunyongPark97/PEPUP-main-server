@@ -292,7 +292,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         if instance.seller.id != user.id:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         sold = instance.sold
-        if sold:
+        if sold and not instance.sold_status == 1:
             instance.sold = False
         else:
             instance.sold = True

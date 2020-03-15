@@ -387,10 +387,8 @@ class PaymentViewSet(viewsets.GenericViewSet):
 
         # trade : 결제 확인
         Trade.objects.filter(deal__payment=payment).update(status=12)
-
         # deal : 결제 확인
         payment.deal_set.all().update(status=12)
-
         # payment: 결제 승인 전
         payment.update(status=2)
 
@@ -449,7 +447,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
                     serializer.save()
                     # 관련 상품 sold처리
                     products = Product.objects.filter(trade__deal__payment=payment)
-                    products.update(sold=True)
+                    products.update(sold=True, sold_status=1)
                     # 하위 trade 2번처리 : 결제완료
                     trades = Trade.objects.filter(deal__payment=payment)
                     trades.update(status=2)
