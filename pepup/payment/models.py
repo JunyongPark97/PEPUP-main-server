@@ -52,11 +52,10 @@ class Payment(models.Model):
             return
 
 
-# todo: payment on delete -> setnull
 class Deal(models.Model):  # 돈 관련 (스토어 별로)
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Deal_buyer')
-    payment = models.ForeignKey(Payment, null=True, on_delete=models.CASCADE)
+    payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL)
     total = models.IntegerField(verbose_name='결제금액')
     remain = models.IntegerField(verbose_name='잔여금')  # 수수료계산이후 정산 금액., 정산이후는 0원, 환불시 감소 등.
     delivery_charge = models.IntegerField(verbose_name='배송비')
@@ -117,6 +116,9 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
 
     STATUS = [
         (1, '결제전'),
+        (11, '결제시작'), # get_payform
+        (12, '결제확인'), # confirm
+        (13, '부트페이 결제완료'), # done 진입 시
         (2, '결제완료'),  # payment/done/ 처리시 바뀜 = 배송전 , noti 날려주기.
         (3, '배송중'),     # 운송장번호 입력시 바꿔줌
         (4, '배송완료'),
@@ -133,6 +135,8 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_seller')
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='Trade_buyer')
     status = models.IntegerField(choices=STATUS, default=1)
+    created_at = models.DateTimeField(auto_now_add=True, help_text="카트 담긴 시각")
+    updated_at = models.DateTimeField(auto_now=True, help_text="카트 수정 시각")
     # todo: status : 결제, 배송, success, refund
 
 
@@ -154,6 +158,36 @@ class TradeLog(models.Model):
     log = models.TextField()
     status = models.IntegerField(choices=STATUS)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TradeErrorLog(models.Model):
+    """
+    결제 시 판매 완료 상품 정보 기록하는 모델입니다.
+    """
+    STATUS = [
+        (1, 'get_payform'),
+        (2, 'confirm'),
+        (3, 'done'),
+        (0, 'other'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    product_ids = models.TextField()
+    status = models.IntegerField(choices=STATUS)
+    description = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class PaymentErrorLog(models.Model):
+    """
+    부트페이에선 결제가 되었지만, done api 호출 시 에러가 나, 서버상에선 결제 완료 처리가 되지 않았을 경우 환불 or 결제 완료
+    처리해야 하기 때문에 로그 생성
+    """
+
+    # TODO : statelessful 하지 않도록 server side 렌더링이 필요
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+    temp_payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL)
 
 
 class WalletLog(models.Model):
