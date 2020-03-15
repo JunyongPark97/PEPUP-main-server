@@ -83,12 +83,31 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         else:
             waybill = None
 
+        condition = self.get_condition(deal)
+
         return Response({"ordering_product": ordering_product,
+                         "condition": condition,
                          "user_info": user_info,
                          "pay_info":
                              {"price": price, "delivery_charge": delivery_charge, "total": total},
                          "address": addr,
                          "waybill": waybill})
+
+    def get_condition(self, obj):
+        status = obj.status
+        if status in [13, 2, 3, 4]: # review 작성 전 or 운송장 입력일로부터 5일 이내
+            # 수령확인 버튼
+            return 0
+        elif status in [5, 6]:
+            # 리뷰작성 버튼(수령확인은 되었지만(클릭 or 5일자동), 리뷰 글이 없거나 자동수령이 되어 리뷰 자체가 없는 경우)
+            if hasattr(obj, 'review'):
+                # 리뷰는 있지만, 내용이 없는 경우 : 별점만 준 경우 (수령확인 시)
+                if not obj.review.context:
+                    return 1 # 리뷰작성
+                return 2 # None : 수령확인시 리뷰를 작성했거나, 리뷰작성 버튼을 눌러 리뷰 글이 있는 경우
+            else:
+                return 1 # 리뷰작성: 자동 수령확인이 되어 리뷰 자체가 없는 경우
+        return 3 # 기타
 
     @action(methods=['post'], detail=True)
     def leave_review(self, request, *args, **kwargs):
@@ -105,6 +124,8 @@ class PurchasedViewSet(viewsets.ModelViewSet):
             serializer = ReviewSerializer(deal.review, data=data, context={'request': request})
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            deal.status = 5
+            deal.save()
             return Response(status=status.HTTP_206_PARTIAL_CONTENT)
 
         serializer = ReviewSerializer(data=data, context={'request': request})
