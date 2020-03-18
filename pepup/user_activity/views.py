@@ -12,7 +12,7 @@ from payment.models import Deal, Review
 from payment.serializers import TradeSerializer, UserNamenPhoneSerializer, AddressSerializer
 from payment.utils import groupbyseller
 from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer, \
-    SimpleWaybillSerializer
+    SimpleWaybillSerializer, SoldDealSerializer
 
 
 class PurchasedViewSet(viewsets.ModelViewSet):
@@ -30,12 +30,13 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(buyer=user).filter(status__in=[2, 3, 4, 5, 6])\
                                       .filter(transaction_completed_date__isnull=False)
         dates = queryset.annotate(date=TruncDate('transaction_completed_date'))\
-            .values('date').annotate(c=Count('id')).order_by()
+            .values('date').annotate(c=Count('id')).order_by('-date')
         # list_data = []
         group_by_date = {}
         for date in dates:
             date = date['date']
-            group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).filter(date=date)
+            group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).\
+                filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
             group_by_date[str(date)] = serialized_data.data
             # group_by_date['date']= str(date)
@@ -105,9 +106,12 @@ class PurchasedViewSet(viewsets.ModelViewSet):
             else:  # 5일 이전
                 return 0  # 수령확인 버튼
         elif status in [5, 6]: # 리뷰가 생성되었을 때 5, -> 별점만 남기거나(수령확인) + 리뷰까지 남긴 경우
-            if not obj.review.context: # 리뷰는 있지만, 내용이 없는 경우 : 별점만 준 경우 (수령확인 시)
-                return 1 # 리뷰작성
-            return 2 # None : 수령확인시 리뷰를 작성했거나, 리뷰작성 버튼을 눌러 리뷰 글이 있는 경우
+            if hasattr(obj, 'review'):
+                if not obj.review.context: # 리뷰는 있지만, 내용이 없는 경우 : 별점만 준 경우 (수령확인 시)
+                    return 1 # 리뷰작성
+                return 2 # None : 수령확인시 리뷰를 작성했거나, 리뷰작성 버튼을 눌러 리뷰 글이 있는 경우
+            else:
+                return 9
         return 3 # 기타
 
     @action(methods=['post'], detail=True)
@@ -154,7 +158,7 @@ class PurchasedViewSet(viewsets.ModelViewSet):
 
 
 class SoldViewSet(viewsets.ModelViewSet):
-    serializer_class = None
+    serializer_class = SoldDealSerializer
     permission_classes = [IsAuthenticated, ]
     queryset = Deal.objects.all().prefetch_related('trade_set', 'trade_set__product', 'trade_set__product__prodthumbnail')\
                                  .select_related('review')\
@@ -162,9 +166,10 @@ class SoldViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         user = request.user
-        queryset = self.get_queryset().filter(seller=user)
+        queryset = self.get_queryset().filter(seller=user,
+                                              status__in=[2, 3, 4, 5, 6, -3])
         dates = queryset.annotate(date=TruncDate('transaction_completed_date')) \
-            .values('date').annotate(c=Count('id')).order_by()
+            .values('date').annotate(c=Count('id')).order_by('-date')
         # list_data = []
         group_by_date = {}
         for date in dates:
@@ -177,3 +182,61 @@ class SoldViewSet(viewsets.ModelViewSet):
             # list_data.append(group_by_date)
 
         return Response(group_by_date, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, *args, **kwargs):
+        deal = self.get_object()
+        user = request.user
+        buyer = deal.buyer
+
+        if deal.seller != user:
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        trades = deal.trade_set.all()
+        trade_serializer = TradeSerializer(trades, many=True)
+        data = groupbyseller(trade_serializer.data)[0]
+        data.pop('payinfo')
+
+        # ordered product info
+        ordering_product = data
+
+        # buyer info
+        user_info = UserNamenPhoneSerializer(buyer).data
+
+        # address
+        addresses = buyer.address_set.filter(recent=True)
+        if addresses:
+            addr = AddressSerializer(addresses.last()).data
+        else:
+            addr = None
+
+        # pay info : price, delivery_charge, total
+        price = 0
+        for trade in trades:
+            dis_price = trade.product.discounted_price
+            price += dis_price
+        delivery_charge = deal.delivery_charge
+        total = deal.total
+
+        # waybill info
+        delivery = deal.delivery
+        if delivery.code and delivery.number:
+            waybill = SimpleWaybillSerializer(delivery).data
+        else:
+            waybill = None
+
+        condition = self.get_condition(deal)
+
+        return Response({"ordering_product": ordering_product,
+                         "condition": condition,
+                         "user_info": user_info,
+                         "pay_info":
+                             {"price": price, "delivery_charge": delivery_charge, "total": total},
+                         "address": addr,
+                         "waybill": waybill})
+
+    def get_condition(self, obj):
+        delivery = obj.delivery
+        if delivery.number_created_time:
+            return 1 # 입력완료
+        return 0 # 운송장 입력 필요
+
