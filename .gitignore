@@ -1,5 +1,6 @@
 .idea/
 prod.py
+stagging.py
 migrations/
 server_info.json
 accounts_info.json
