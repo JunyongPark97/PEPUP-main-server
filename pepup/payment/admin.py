@@ -11,7 +11,7 @@ class CommissionAdmin(admin.ModelAdmin):
 
 
 class TradeAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'buyer', 'product', 'seller',  'payment', 'deal', 'status', 'created_at', 'updated_at']
+    list_display = ['pk', 'buyer', 'product', 'seller',  'payment', 'deal', 'status', 'settable', 'created_at', 'updated_at']
     list_filter = ('status',)
 
     def payment(self, obj):
@@ -26,7 +26,7 @@ class TradeAdmin(admin.ModelAdmin):
 
 class DealAdmin(admin.ModelAdmin):
     list_display = ['pk', 'buyer', 'seller', 'delivery_link', 'payment_link', 'transaction_completed_date',
-                    'total', 'remain', 'status', 'is_settled']
+                    'total', 'remain', 'status', 'settable','is_settled']
     list_filter = ['status', 'is_settled']
 
     def delivery_link(self, obj):

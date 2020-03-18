@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta, datetime
 
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from django.db import models
@@ -81,6 +82,21 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
     is_settled = models.BooleanField(default=False, help_text="정산 여부(신중히 다뤄야 함)", verbose_name="정산여부(신중히)")
     transaction_completed_date = models.DateTimeField(null=True, blank=True)
 
+    @property
+    def settable(self):
+        """
+        정산 가능 여부 , 거래 완료 여부
+        """
+        if self.status == 5:
+            return True
+        elif self.status in [2, 3, 4] and self.transaction_completed_date:
+            if self.transaction_completed_date + timedelta(days=5) < datetime.now():
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def save(self, *args, **kwargs):
         self._transaction_completed()
         self._check_settlable()
@@ -88,15 +104,16 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
         super(Deal, self).save(*args, **kwargs)
 
     def _transaction_completed(self):
-        # 운송장 번호 입력 후 5일 or 리뷰 남겼을 때 status = 5
+        # 리뷰 남겼을 때 status = 5 / 운송장 번호 입력 후 5일 지났을 때 처리 불가 -> trade의 property로 처리
         if self.status == 5:
             self.delivery.states = 'step6'
             self.trade_set.update(status=5)
 
     def _check_settlable(self):
+        # walletlog 의 is_settled 가 바뀔때 같이 호출됨
         if self.is_settled:
             # 5(거래완료)는 리뷰 작성시 or 운송장 번호 입력 후 5일 이후
-            if self.status == 5:
+            if self.settable:
                 self.status = 6 # deal: 정산완료
                 self.trade_set.update(status=6) # trade: 정산완료
                 self.remain = 0
@@ -188,6 +205,23 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
     updated_at = models.DateTimeField(auto_now=True, help_text="카트 수정 시각")
     # todo: status : 결제, 배송, success, refund
 
+    @property
+    def settable(self):
+        """
+        정산 가능 여부 , 거래 완료 여부
+        """
+        deal = self.deal
+        completed_date = deal.transaction_completed_date
+        if self.status == 5:
+            return True
+        elif self.status in [2, 3, 4] and completed_date:
+            if completed_date + timedelta(days=5) < datetime.now():
+                return True
+            else:
+                return False
+        else:
+            return False
+
 
 class TradeLog(models.Model):
     STATUS = [
@@ -269,11 +303,14 @@ class WalletLog(models.Model):
     def _check_deal_status(self):
         if self.is_settled:
             deal = self.deal
-            if deal.status == 6 or deal.is_settled or not deal.status == 5:
+            if deal.status == 6 or deal.is_settled:
                 raise Exception('정산이 불가한 상태입니다.')
-            self.status = 2
-            self.deal.is_settled = True
-            self.deal.save()
+            elif deal.settable:
+                self.status = 2
+                self.deal.is_settled = True
+                self.deal.save()
+            else:
+                raise Exception('정산이 불가한 상태입니다.')
 
 
 def review_directory_path(instance, filename):

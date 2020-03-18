@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta
 
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -95,22 +96,22 @@ class PurchasedViewSet(viewsets.ModelViewSet):
 
     def get_condition(self, obj):
         status = obj.status
-        if status in [13, 2, 3, 4]: # review 작성 전 or 운송장 입력일로부터 5일 이내
-            # 수령확인 버튼
-            return 0
-        elif status in [5, 6]:
-            # 리뷰작성 버튼(수령확인은 되었지만(클릭 or 5일자동), 리뷰 글이 없거나 자동수령이 되어 리뷰 자체가 없는 경우)
-            if hasattr(obj, 'review'):
-                # 리뷰는 있지만, 내용이 없는 경우 : 별점만 준 경우 (수령확인 시)
-                if not obj.review.context:
-                    return 1 # 리뷰작성
-                return 2 # None : 수령확인시 리뷰를 작성했거나, 리뷰작성 버튼을 눌러 리뷰 글이 있는 경우
-            else:
-                return 1 # 리뷰작성: 자동 수령확인이 되어 리뷰 자체가 없는 경우
+        completed_date = obj.delivery.number_created_time
+        if status in [13, 2, 3, 4]: # review 작성 전 + 운송장 입력 관련
+            if not completed_date: # 수령확인 안됨(리뷰 없음) -> 운송장 입력일로부터 5일 지났을 경우
+                return 0 # 수령 확인 버튼
+            if completed_date + timedelta(days=5) < datetime.now():  # 5일 이후
+                return 1  # 리뷰작성 버튼
+            else:  # 5일 이전
+                return 0  # 수령확인 버튼
+        elif status in [5, 6]: # 리뷰가 생성되었을 때 5, -> 별점만 남기거나(수령확인) + 리뷰까지 남긴 경우
+            if not obj.review.context: # 리뷰는 있지만, 내용이 없는 경우 : 별점만 준 경우 (수령확인 시)
+                return 1 # 리뷰작성
+            return 2 # None : 수령확인시 리뷰를 작성했거나, 리뷰작성 버튼을 눌러 리뷰 글이 있는 경우
         return 3 # 기타
 
     @action(methods=['post'], detail=True)
-    def leave_review(self, request, *args, **kwargs):
+    def leave_review(self, request, *args, **kwargs): #수령확인(별점만 남기기) or 리뷰작성
         data = request.data.copy()
         deal = self.get_object()
 
@@ -150,3 +151,29 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         review = deal.review
         serializer = ReviewRetrieveSerializer(review)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class SoldViewSet(viewsets.ModelViewSet):
+    serializer_class = None
+    permission_classes = [IsAuthenticated, ]
+    queryset = Deal.objects.all().prefetch_related('trade_set', 'trade_set__product', 'trade_set__product__prodthumbnail')\
+                                 .select_related('review')\
+                                 .select_related('delivery', 'delivery__receiver')
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        queryset = self.get_queryset().filter(seller=user)
+        dates = queryset.annotate(date=TruncDate('transaction_completed_date')) \
+            .values('date').annotate(c=Count('id')).order_by()
+        # list_data = []
+        group_by_date = {}
+        for date in dates:
+            date = date['date']
+            group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).filter(date=date)
+            serialized_data = self.get_serializer(group_by_date_qs, many=True)
+            group_by_date[str(date)] = serialized_data.data
+            # group_by_date['date']= str(date)
+            # group_by_date['data']= serialized_data.data
+            # list_data.append(group_by_date)
+
+        return Response(group_by_date, status=status.HTTP_200_OK)
