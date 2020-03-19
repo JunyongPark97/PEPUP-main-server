@@ -131,3 +131,5 @@ class SimpleWaybillSerializer(serializers.ModelSerializer):
     def get_code(self, obj):
         code = obj.get_code_display()
         return code
+
+# class

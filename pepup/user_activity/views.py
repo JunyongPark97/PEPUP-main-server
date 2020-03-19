@@ -8,7 +8,7 @@ from rest_framework import status, viewsets
 
 from django.db.models import Count
 from django.db.models.functions import TruncDate
-from payment.models import Deal, Review
+from payment.models import Deal, Review, Delivery
 from payment.serializers import TradeSerializer, UserNamenPhoneSerializer, AddressSerializer
 from payment.utils import groupbyseller
 from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer, \
@@ -239,4 +239,25 @@ class SoldViewSet(viewsets.ModelViewSet):
         if delivery.number_created_time:
             return 1 # 입력완료
         return 0 # 운송장 입력 필요
+
+    @action(methods=['get'], detail=True)
+    def waybill(self, request, *args, **kwargs):
+        codes = Delivery.codes
+        code_list = []
+        for code in codes:
+            a = {}
+            a[code[0]] = code[1]
+            code_list.append(a)
+        return codes
+
+    @action(methods=['post'], detail=True)
+    def leave_waybill(self, request, *args, **kwargs):
+        deal = self.get_object()
+        delivery = deal.delivery
+
+        serializer = None
+        pass
+
+
+
 
