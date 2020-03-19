@@ -31,19 +31,22 @@ class PurchasedViewSet(viewsets.ModelViewSet):
                                       .filter(transaction_completed_date__isnull=False)
         dates = queryset.annotate(date=TruncDate('transaction_completed_date'))\
             .values('date').annotate(c=Count('id')).order_by('-date')
-        # list_data = []
+        list_data = []
         group_by_date = {}
         for date in dates:
             date = date['date']
             group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).\
                 filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
+
             group_by_date[str(date)] = serialized_data.data
+            list_data.append(group_by_date)
+            group_by_date = {}
             # group_by_date['date']= str(date)
             # group_by_date['data']= serialized_data.data
             # list_data.append(group_by_date)
 
-        return Response(group_by_date, status=status.HTTP_200_OK)
+        return Response(list_data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, *args, **kwargs):
         deal = self.get_object()
@@ -170,18 +173,20 @@ class SoldViewSet(viewsets.ModelViewSet):
                                               status__in=[2, 3, 4, 5, 6, -3])
         dates = queryset.annotate(date=TruncDate('transaction_completed_date')) \
             .values('date').annotate(c=Count('id')).order_by('-date')
-        # list_data = []
+        list_data = []
         group_by_date = {}
         for date in dates:
             date = date['date']
             group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
             group_by_date[str(date)] = serialized_data.data
+            list_data.append(group_by_date)
+            group_by_date = {}
             # group_by_date['date']= str(date)
             # group_by_date['data']= serialized_data.data
             # list_data.append(group_by_date)
 
-        return Response(group_by_date, status=status.HTTP_200_OK)
+        return Response(list_data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, *args, **kwargs):
         deal = self.get_object()
