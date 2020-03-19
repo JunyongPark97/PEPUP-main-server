@@ -38,8 +38,8 @@ class PurchasedViewSet(viewsets.ModelViewSet):
             group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).\
                 filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
-
-            group_by_date[str(date)] = serialized_data.data
+            group_by_date['date'] = str(date)
+            group_by_date['result'] = serialized_data.data
             list_data.append(group_by_date)
             group_by_date = {}
             # group_by_date['date']= str(date)
@@ -179,7 +179,9 @@ class SoldViewSet(viewsets.ModelViewSet):
             date = date['date']
             group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
-            group_by_date[str(date)] = serialized_data.data
+            # group_by_date[str(date)] = serialized_data.data
+            group_by_date['date'] = str(date)
+            group_by_date['result'] = serialized_data.data
             list_data.append(group_by_date)
             group_by_date = {}
             # group_by_date['date']= str(date)
