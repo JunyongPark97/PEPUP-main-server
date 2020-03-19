@@ -256,9 +256,10 @@ class SoldViewSet(viewsets.ModelViewSet):
         code_list = []
         for code in codes:
             a = {}
-            a[code[0]] = code[1]
+            a['code'] = code[0]
+            a['name'] = code[1]
             code_list.append(a)
-        return Response(codes, status=status.HTTP_200_OK)
+        return Response(code_list, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=True)
     def leave_waybill(self, request, *args, **kwargs):
@@ -271,8 +272,7 @@ class SoldViewSet(viewsets.ModelViewSet):
 
         # update deliery
         serializer = WaybillCreateSerializer(delivery, data=data)
-        if not serializer.is_valid():
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
         delivery = serializer.save()
 
         # other parameter update
@@ -281,5 +281,6 @@ class SoldViewSet(viewsets.ModelViewSet):
         delivery.save()
         deal.status = 3 # 운송장 번호 입력 완료
         deal.trade_set.update(status=3) # 배송중
+        deal.save()
 
         return Response(status=status.HTTP_201_CREATED)
