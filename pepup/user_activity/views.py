@@ -12,7 +12,7 @@ from payment.models import Deal, Review, Delivery
 from payment.serializers import TradeSerializer, UserNamenPhoneSerializer, AddressSerializer
 from payment.utils import groupbyseller
 from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer, \
-    SimpleWaybillSerializer, SoldDealSerializer
+    SimpleWaybillSerializer, SoldDealSerializer, WaybillCreateSerializer
 
 
 class PurchasedViewSet(viewsets.ModelViewSet):
@@ -245,24 +245,39 @@ class SoldViewSet(viewsets.ModelViewSet):
             return 1 # 입력완료
         return 0 # 운송장 입력 필요
 
-    @action(methods=['get'], detail=True)
+    @action(methods=['get'], detail=False)
     def waybill(self, request, *args, **kwargs):
+        """
+        택배사 조회
+        """
         codes = Delivery.codes
         code_list = []
         for code in codes:
             a = {}
             a[code[0]] = code[1]
             code_list.append(a)
-        return codes
+        return Response(codes, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=True)
     def leave_waybill(self, request, *args, **kwargs):
+        """
+        운송장 번호 입력
+        """
         deal = self.get_object()
         delivery = deal.delivery
+        data = request.data
 
-        serializer = None
-        pass
+        # update deliery
+        serializer = WaybillCreateSerializer(delivery, data=data)
+        if not serializer.is_valid():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        delivery = serializer.save()
 
+        # other parameter update
+        delivery.number_created_time = datetime.now()
+        delivery.state = 'step1'
+        delivery.save()
+        deal.status = 3 # 운송장 번호 입력 완료
+        deal.trade_set.update(status=3) # 배송중
 
-
-
+        return Response(status=status.HTTP_201_CREATED)

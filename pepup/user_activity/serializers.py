@@ -132,4 +132,8 @@ class SimpleWaybillSerializer(serializers.ModelSerializer):
         code = obj.get_code_display()
         return code
 
-# class
+
+class WaybillCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Delivery
+        fields = ['code', 'number']

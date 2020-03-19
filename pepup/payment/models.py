@@ -89,8 +89,8 @@ class Deal(models.Model):  # 돈 관련 (스토어 별로)
         """
         if self.status == 5:
             return True
-        elif self.status in [2, 3, 4] and self.transaction_completed_date:
-            if self.transaction_completed_date + timedelta(days=5) < datetime.now():
+        elif self.status in [2, 3, 4] and self.delivery.number_created_time:
+            if self.delivery.number_created_time + timedelta(days=5) < datetime.now():
                 return True
             else:
                 return False
@@ -211,7 +211,7 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
         정산 가능 여부 , 거래 완료 여부
         """
         deal = self.deal
-        completed_date = deal.transaction_completed_date
+        completed_date = deal.delivery.number_created_time
         if self.status == 5:
             return True
         elif self.status in [2, 3, 4] and completed_date:
