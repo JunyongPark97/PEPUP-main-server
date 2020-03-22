@@ -5,6 +5,7 @@ from django.db import models
 from django.conf import settings
 
 from api.models import Product, Follow
+from core.fields import S3ImageKeyField
 from notice.models import Notice
 from payment.models import Deal, Trade
 
@@ -30,6 +31,7 @@ class UserActivityLog(models.Model):
     content = models.CharField(max_length=250)
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    big_image_url = models.TextField(help_text="notice 에 들어가는 이미지 url")
 
     reference = models.ForeignKey('UserActivityReference', on_delete=models.CASCADE, null=True, blank=True, related_name="logs")
 
