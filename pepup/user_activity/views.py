@@ -243,9 +243,9 @@ class SoldViewSet(viewsets.ModelViewSet):
 
     def get_condition(self, obj):
         delivery = obj.delivery
-        if delivery.number_created_time:
-            return 1 # 입력완료
-        return 0 # 운송장 입력 필요
+        if delivery.state == 'step0':
+            return 0 # 입력완료
+        return 1 # 운송장 입력 필요
 
     @action(methods=['get'], detail=False)
     def waybill(self, request, *args, **kwargs):
