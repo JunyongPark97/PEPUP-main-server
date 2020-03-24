@@ -504,10 +504,12 @@ class SimpleProfileSerializer(serializers.ModelSerializer):
 
 class StoreReviewSerializer(serializers.ModelSerializer):
     buyer_profile = serializers.SerializerMethodField()
+    buyer_name = serializers.SerializerMethodField()
+    satisfaction = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ['buyer_profile', 'context', 'satisfaction', 'thumbnail', 'created_at']
+        fields = ['buyer_name','buyer_profile', 'context', 'satisfaction', 'thumbnail', 'created_at']
 
     def get_buyer_profile(self, obj):
         buyer = obj.buyer
@@ -516,6 +518,17 @@ class StoreReviewSerializer(serializers.ModelSerializer):
             return ThumbnailSerializer(profile).data
         except:
              return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+
+
+    def get_buyer_name(self, obj):
+        buyer = obj.buyer
+        nickname = buyer.nickname
+        return nickname
+
+    def get_satisfaction(self, obj):
+        satisfaction = obj.satisfaction
+        return float(satisfaction)
+
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):
