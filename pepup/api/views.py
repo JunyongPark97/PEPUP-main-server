@@ -20,7 +20,7 @@ from django.db.models import IntegerField, Value, Case, When
 from django.db.models.functions import Ceil
 
 # model
-from accounts.models import User, DeliveryPolicy, Profile
+from accounts.models import User, DeliveryPolicy, Profile, StoreAccount
 from payment.models import Trade
 from .loader import load_credential
 from .models import (Product, ProdThumbnail,
@@ -38,7 +38,7 @@ from .serializers import (
     StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
     GenderSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer,
     SimpleProfileSerializer, StoreReviewSerializer, DeliveryPolicyWriteSerializer,
-    StoreProfileRetrieveSerializer)
+    StoreProfileRetrieveSerializer, StoreAccountSerializer, StoreAccountWriteSerializer)
 
 from accounts.serializers import UserSerializer
 
@@ -990,18 +990,69 @@ class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
         """
         return super(DeliveryPolicyViewSet, self).retrieve(request, *args, **kwargs)
 
-def sign(key, msg):
-    return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
 
-def getSignatureKey(key, date_stamp, regionName, serviceName):
-    kDate = sign(('AWS4' + key).encode('utf-8'), date_stamp)
-    kRegion = sign(kDate, regionName)
-    kService = sign(kRegion, serviceName)
-    kSigning = sign(kService, 'aws4_request')
-    return kSigning
+class StoreAccountViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    # serializer_class = StoreAccountSerializer
+    permission_classes = [IsAuthenticated, ]
 
-def stringToBase64(s):
-    return base64.b64encode(s.encode('utf-8'))
+    def get_serializer_class(self):
+        serializer = StoreAccountSerializer
+        if self.action == 'retrieve':
+            serializer = serializer
+        elif self.action in ['create', 'update']:
+            serializer = StoreAccountWriteSerializer
+        else:
+            serializer = serializer
+        return serializer
+
+    def retrieve(self, request, *args, **kwargs):
+        retrieve_user = self.get_object()
+        user = request.user
+
+        # check acceptable
+        if not retrieve_user == user:
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        if not hasattr(retrieve_user, 'account'):
+            return Response(None, status=status.HTTP_204_NO_CONTENT)
+
+        serializer = self.get_serializer(retrieve_user.account)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        retrieve_user = self.get_object()
+        user = request.user
+
+        # check acceptable
+        if not retrieve_user == user:
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        data = request.data.copy()
+        account = retrieve_user.account
+        serializer = self.get_serializer(account, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_206_PARTIAL_CONTENT)
+
+    @action(methods=['get'], detail=False)
+    def banks(self, request, *args, **kwargs):
+        banks = StoreAccount.BANK
+        bank_list = []
+        for bank in banks:
+            a = {}
+            a['bank_id'] = bank[0]
+            a['bank'] = bank[1]
+            bank_list.append(a)
+        return Response(bank_list, status=status.HTTP_200_OK)
+
 
 class S3ImageUploadViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, ]
@@ -1030,66 +1081,3 @@ class S3ImageUploadViewSet(viewsets.GenericViewSet):
         content_type = "image/jpeg"
         data = {"url": url, "image_key": image_key, "content_type": content_type, "key":key}
         return Response(data)
-
-
-    # @action(methods=['get'], detail=False, permission_classes=[IsAuthenticated, ])
-    # def test_key(self, request):
-    #     ACCESS_KEY = load_credential("AWS_ACCESS_KEY_ID", "")
-    #     SECRET_ACCESS_KEY = load_credential("AWS_SECRET_ACCESS_KEY", "")
-    #
-    #     t = datetime.datetime.utcnow()
-    #     amz_date = t.strftime('%Y%m%dT%H%M%SZ')
-    #     date_stamp = t.strftime('%Y%m%d')  # Date w/o time, used in credential scope
-    #
-    #
-    # # Step 2: Create canonical URI--the part of the URI from domain to query
-    # # string (use '/' if no path)
-    #     canonical_uri = '/'
-    #
-    # ## Step 3: Create the canonical query string. In this example, request
-    # # parameters are passed in the body of the request and the query string
-    # # is blank.
-    #     canonical_querystring = ''
-    #
-    # # Step 4: Create the canonical headers. Header names must be trimmed
-    # # and lowercase, and sorted in code point order from low to high.
-    # # Note that there is a trailing \n.
-    #     canonical_headers = 'content-type:' + 'image/jpeg' + '\n' + 'host:' + host + '\n' + 'x-amz-date:' + amz_date + '\n' + 'x-amz-target:'
-    #
-    # # Step 5: Create the list of signed headers. This lists the headers
-    # # in the canonical_headers list, delimited with ";" and in alpha order.
-    # # Note: The request can include any headers; canonical_headers and
-    # # signed_headers include those that you want to be included in the
-    # # hash of the request. "Host" and "x-amz-date" are always required.
-    # # For DynamoDB, content-type and x-amz-target are also required.
-    #     signed_headers = 'content-type;host;x-amz-date;x-amz-target'
-    #
-    # # Step 6: Create payload hash. In this example, the payload (body of
-    # # the request) contains the request parameters.
-    # #     payload_hash = hashlib.sha256(request_parameters.encode('utf-8')).hexdigest()
-    #     # Step 7: Combine elements to create canonical request
-    #     # canonical_request = 'post' + '\n' + canonical_uri + '\n' + canonical_querystring + '\n' + canonical_headers + '\n' + signed_headers + '\n' + payload_hash
-    #
-    #     algorithm = 'AWS4-HMAC-SHA256'
-    #
-    #     credential_scope = date_stamp + '/' + 'ap-northeast-2' + '/' + 's3' + '/' + 'aws4_request'
-    #     string_to_sign = algorithm + '\n' + amz_date + '\n' + credential_scope + '\n' + hashlib.sha256(\
-    #         canonical_request.encode('utf-8')).hexdigest()
-    #
-    #     # ************* TASK 3: CALCULATE THE SIGNATURE *************
-    #     # Create the signing key using the function defined above.
-    #     signing_key = getSignatureKey(SECRET_ACCESS_KEY, date_stamp, 'ap-northeast-2', 's3')
-    #
-    #     # Sign the string_to_sign using the signing_key
-    #     signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
-    #
-    #     # ************* TASK 4: ADD SIGNING INFORMATION TO THE REQUEST *************
-    #     # Put the signature information in a header named Authorization.
-    #     authorization_header = algorithm + ' ' + 'Credential=' + ACCESS_KEY + '/' + credential_scope + ', ' + 'SignedHeaders=' + signed_headers + ', ' + 'Signature=' + signature
-    #
-    #     return Response()
-
-
-class UploadS3ImageTestAPIView(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated,]
-    serializer_class = None

@@ -582,3 +582,28 @@ class DeliveryPolicyWriteSerializer(serializers.ModelSerializer):
 
         # Done!
         return delivery_policy
+
+
+class StoreAccountSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    bank = serializers.SerializerMethodField()
+    bank_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StoreAccount
+        fields = ['user', 'bank', 'bank_id', 'account', 'account_holder']
+
+    def get_bank(self, obj):
+        return obj.get_bank_display()
+
+    def get_bank_id(self, obj):
+        bank = obj.bank
+        return bank
+
+
+class StoreAccountWriteSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = StoreAccount
+        fields = ['user', 'bank', 'account', 'account_holder']
