@@ -26,13 +26,14 @@ class FAQ(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    group = models.IntegerField(choices=GROUP_CHOICES, default=99)
+    group = models.IntegerField(choices=GROUP_CHOICES, default=1)
 
     def __unicode__(self):
         return self.title
 
     class Meta:
         verbose_name_plural = '자주묻는 질문'
+        ordering = ['group', 'pk']
 
 
 class Notice(models.Model):
@@ -77,3 +78,23 @@ class Official(models.Model):
     class Meta:
         ordering = ['-version']
         verbose_name_plural = '약관'
+
+
+class NoticeBanner(models.Model):
+    banner = models.ImageField(upload_to='notice')
+    title = models.CharField(max_length=100)
+    hidden = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    notice = models.ForeignKey(Notice, on_delete=models.SET_NULL, null=True, blank=True, related_name='banners')
+
+    @property
+    def banner_url(self):
+        return self.banner.url
+
+    def __unicode__(self):
+        return self.title
+
+    class Meta:
+        verbose_name_plural = '공지사항 배너'

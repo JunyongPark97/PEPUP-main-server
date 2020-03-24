@@ -2,6 +2,9 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 from urllib import parse as urlparse
 from base64 import b64decode, b64encode
+from collections import OrderedDict
+
+from core.pagination import PepupPagination
 
 
 class PepupCursorPagination(CursorPagination):
@@ -29,9 +32,19 @@ class PepupCursorPagination(CursorPagination):
         return encoded
 
 
-class NoticePagination(PepupCursorPagination):
+class NoticePagination(PepupPagination):
     page_size = 15
     ordering = ('-important', '-created_at')
+
+    def get_paginated_response(self, data, banner=None):
+
+        return Response(OrderedDict([
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_page_num()),
+            ('previous', self.get_prev_page_num()),
+            ('banner', banner),
+            ('results', data)
+        ]))
 
 
 class EventNoticePagination(PepupCursorPagination):

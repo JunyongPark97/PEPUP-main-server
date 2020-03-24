@@ -1,13 +1,13 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from notice.models import Notice, FAQ, Official
+from notice.models import Notice, FAQ, Official, NoticeBanner
 from notice.pagination import NoticePagination
-from notice.serializers import NoticeSerializer, FAQSerializer, OfficialSerializer
+from notice.serializers import NoticeSerializer, FAQSerializer, OfficialSerializer, NoticeBannerSerializer
 
 
 class NoticeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Notice.objects.all()
+    queryset = Notice.objects.filter(hidden=False)
     serializer_class = NoticeSerializer
     pagination_class = NoticePagination
 
@@ -21,7 +21,17 @@ class NoticeViewSet(viewsets.ReadOnlyModelViewSet):
         """
         공지사항 list API입니다.
         """
-        return super(NoticeViewSet, self).list(request, *args, **kwargs)
+        paginator = self.pagination_class()
+        queryset = self.get_queryset()
+        page = paginator.paginate_queryset(queryset=queryset, request=request)
+        serializer = self.get_serializer(page, many=True)
+
+        banners = NoticeBanner.objects.filter(hidden=False)
+        if banners:
+            banner_serializer = NoticeBannerSerializer(banners, many=True)
+            return paginator.get_paginated_response(serializer.data, banner=banner_serializer.data)
+
+        return paginator.get_paginated_response(serializer.data, banner=None)
 
     def retrieve(self, request, *args, **kwargs):
         """

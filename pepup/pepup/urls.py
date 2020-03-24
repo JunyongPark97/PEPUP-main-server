@@ -33,6 +33,7 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('api/', include('payment.urls')),
     path('api/', include('user_activity.urls')),
+    path('api/', include('notice.urls')),
 
     path('', include('landing.urls')),
     # ckeditor
