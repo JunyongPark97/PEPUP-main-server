@@ -82,7 +82,7 @@ class Profile(models.Model):
     introduce = models.TextField(verbose_name='소개', default="")
 
     @property
-    def thumbnail_img_url(self):
+    def profile_img_url(self):
         """
         1. thumbnail_img가 자신이 올린 것이 있을 경우
         2. 없으면 socialaccount의 last의 img사용
@@ -92,7 +92,7 @@ class Profile(models.Model):
             return self.thumbnail_img.url
         elif hasattr(self.user.socialaccount_set.last(), 'extra_data'):
             if 'properties' in self.user.socialaccount_set.last().extra_data:
-                return self.user.socialaccount_set.last().extra_data['properties'].get('thumbnail')
+                return self.user.socialaccount_set.last().extra_data['properties'].get('profile_image')
         else:
             return self.thumbnail_img.url
 

@@ -532,25 +532,19 @@ class StoreReviewSerializer(serializers.ModelSerializer):
 
 class StoreProfileRetrieveSerializer(serializers.ModelSerializer):
     profile_img = serializers.SerializerMethodField()
-    nickname = serializers.SerializerMethodField()
+    introduce = serializers.SerializerMethodField()
 
     class Meta:
-        model = Profile
+        model = User
         fields = ['profile_img', 'nickname', 'introduce']
 
     def get_profile_img(self, obj):
-        user = obj.user
-        if hasattr(user.socialaccount_set.last(), 'extra_data'):
-            social_profile_img = user.socialaccount_set.last().extra_data['properties'].get('profile_image')
-            return {"thumbnail_img": social_profile_img}
-        try:
-            return ThumbnailSerializer(obj).data
-        except:
-            return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+        profile = obj.profile
+        return profile.profile_img_url
 
-    def get_nickname(self, obj):
-        user = obj.user
-        return user.nickname
+    def get_introduce(self, obj):
+        profile = obj.profile
+        return profile.introduce
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):
