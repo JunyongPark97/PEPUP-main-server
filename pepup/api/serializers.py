@@ -9,7 +9,7 @@ from django.http import Http404
 from django.utils.timesince import timesince
 from rest_framework import serializers
 from django.db.models import Avg
-from accounts.models import User, DeliveryPolicy, StoreAccount
+from accounts.models import User, DeliveryPolicy, StoreAccount, Profile
 from accounts.serializers import UserSerializer, ThumbnailSerializer
 from payment.models import Review
 from .models import (Product, Brand, ProdThumbnail,
@@ -529,6 +529,28 @@ class StoreReviewSerializer(serializers.ModelSerializer):
         satisfaction = obj.satisfaction
         return float(satisfaction)
 
+
+class StoreProfileRetrieveSerializer(serializers.ModelSerializer):
+    profile_img = serializers.SerializerMethodField()
+    nickname = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ['profile_img', 'nickname', 'introduce']
+
+    def get_profile_img(self, obj):
+        user = obj.user
+        if hasattr(user.socialaccount_set.last(), 'extra_data'):
+            social_profile_img = user.socialaccount_set.last().extra_data['properties'].get('profile_image')
+            return {"thumbnail_img": social_profile_img}
+        try:
+            return ThumbnailSerializer(obj).data
+        except:
+            return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+
+    def get_nickname(self, obj):
+        user = obj.user
+        return user.nickname
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):

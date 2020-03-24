@@ -20,7 +20,7 @@ from django.db.models import IntegerField, Value, Case, When
 from django.db.models.functions import Ceil
 
 # model
-from accounts.models import User, DeliveryPolicy
+from accounts.models import User, DeliveryPolicy, Profile
 from payment.models import Trade
 from .loader import load_credential
 from .models import (Product, ProdThumbnail,
@@ -38,7 +38,7 @@ from .serializers import (
     StoreSerializer, StoreLikeSerializer, FirstCategorySerializer, SecondCategorySerializer,
     GenderSerializer, SizeSerializer, ProductCreateSerializer, ReviewCreateSerializer,
     SimpleProfileSerializer, StoreReviewSerializer, DeliveryPolicyWriteSerializer,
-)
+    StoreProfileRetrieveSerializer)
 
 from accounts.serializers import UserSerializer
 
@@ -857,6 +857,54 @@ class StoreViewSet(viewsets.GenericViewSet):
         except:
             retrieve_user = None
         return retrieve_user
+
+
+class ProfileViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
+    queryset = Profile.objects.all()
+    serializer_class = StoreProfileRetrieveSerializer
+    permission_classes = [IsAuthenticated, ]
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        store의 profile 수정 시 조회하는 api 입니다.
+        login 시 pk 가 없는 경우를 대비하여 pk를 입력하지 않고 조회할 수 있게하기위해
+        retrieve를 override 하였습니다.
+        * RestFul 하진 않습니다..
+        """
+        return super(ProfileViewSet, self).retrieve(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """
+        store의 profile 수정하는 api 입니다.
+        introduce, nickname, profile_img 를 params로 받습니다.
+        마찬가지로 pk 없이 자신의 profile을 업데이트 하게하였습니다.
+        * RestFul 하진 않습니다..
+        """
+        data = request.data.copy()
+        profile = self.get_object()
+        user = request.user
+
+        if 'introduce' in data:
+            introduce = data.pop('introduce')
+            profile.introduce = introduce[0]
+            profile.save()
+
+        if 'nickname' in data:
+            nickname = data.pop('nickname')
+            user.nickname = nickname[0]
+            user.save()
+
+        if 'profile_img' in request.FILES:
+            prof_img = request.FILES['profile_img']
+            profile.thumbnail_img = prof_img
+            profile.save()
+
+        return Response(status=status.HTTP_206_PARTIAL_CONTENT)
+
+    def get_object(self):
+        user = self.request.user
+        profile = user.profile
+        return profile
 
 
 class ReviewViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
