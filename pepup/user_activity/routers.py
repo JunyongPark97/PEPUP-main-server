@@ -1,6 +1,6 @@
 
 from rest_framework.routers import Route, DefaultRouter, DynamicRoute
-from .views import PurchasedViewSet, SoldViewSet
+from .views import PurchasedViewSet, SoldViewSet, ActivityViewSet
 
 
 class CustomRouter(DefaultRouter):
@@ -51,4 +51,5 @@ class CustomRouter(DefaultRouter):
 router = CustomRouter()
 router.register('purchased', PurchasedViewSet, basename='purchase')
 router.register('sold', SoldViewSet, basename='purchase')
+router.register('activity', ActivityViewSet, basename='activity')
 

@@ -141,7 +141,7 @@ class WaybillCreateSerializer(serializers.ModelSerializer):
 
 
 class ActivityProductThumbnailSerializer(serializers.ModelSerializer):
-    image_url = serializers.ModelSerializer()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Trade
@@ -156,6 +156,8 @@ class ActivitySerializer(serializers.ModelSerializer):
     content = serializers.SerializerMethodField()
     big_image_url = serializers.SerializerMethodField()
     product_image_url = serializers.SerializerMethodField()
+    redirectable = serializers.SerializerMethodField()
+    redirect_id = serializers.SerializerMethodField()
     age = serializers.SerializerMethodField()
     condition = serializers.SerializerMethodField()
     deep_link = serializers.SerializerMethodField()
@@ -247,6 +249,8 @@ class ActivitySerializer(serializers.ModelSerializer):
             return created_at
         if diff <= timedelta(minutes=1):
             return 'just now'
+        elif diff >= timedelta(days=1):
+            return created_at.strftime('%Y.%m.%d')
         return '%(time)s ago' % {'time': timesince(created_at).split(', ')[0]}
 
     # return image urls for payment activity
@@ -256,7 +260,7 @@ class ActivitySerializer(serializers.ModelSerializer):
             return None
         deal = obj.reference.deal
         trades = deal.trade_set.all()
-        return ActivityProductThumbnailSerializer(trades, many=True)
+        return ActivityProductThumbnailSerializer(trades, many=True).data
 
     # return big image url
     def get_big_image_url(self, obj):
@@ -297,7 +301,7 @@ class ActivitySerializer(serializers.ModelSerializer):
     def get_content(self, obj):
         about, condition, _, _, _ = self._condition(obj)
         try:
-            name = self._product_name(obj)
+            name = self._product_name(obj.reference.deal)
         except:
             name = None
 

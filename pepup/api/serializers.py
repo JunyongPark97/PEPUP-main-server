@@ -410,7 +410,10 @@ class StoreSerializer(serializers.ModelSerializer):
     def get_profile(self, obj):
         if hasattr(obj.socialaccount_set.last(), 'extra_data'):
             social_profile_img = obj.socialaccount_set.last().extra_data['properties'].get('profile_image')
-            return {"thumbnail_img": social_profile_img}
+            if social_profile_img:
+                return {"thumbnail_img": social_profile_img}
+            else:
+                return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
         try:
             profile = obj.profile
             return ThumbnailSerializer(profile).data

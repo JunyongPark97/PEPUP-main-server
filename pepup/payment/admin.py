@@ -1,4 +1,3 @@
-from django.contrib import admin
 from payment.models import Commission, WalletLog, Trade, Deal, Payment, Review, DeliveryMemo, PaymentErrorLog
 from django.contrib import admin
 from django.urls import reverse

@@ -303,7 +303,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         user = request.user
-        queryset = self.get_queryset().filter(user=user)
+        queryset = self.get_queryset().filter(user=user).order_by('-id')
         serializer = self.get_serializer(queryset, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
