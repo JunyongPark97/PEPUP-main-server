@@ -481,7 +481,7 @@ class AccountViewSet(viewsets.GenericViewSet):
         user = request.user
         if hasattr(user, 'delivery_policy'):
             return Response(status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SocialUserViewSet(ViewSetMixin, SocialLoginView):

@@ -22,6 +22,7 @@ from django.db.models import IntegerField, Value, Case, When
 from django.db.models.functions import Ceil
 
 from api.models import Product
+from user_activity.models import UserActivityLog, UserActivityReference
 from .Bootpay import BootpayApi
 # model
 from accounts.models import User, DeliveryPolicy
@@ -431,6 +432,8 @@ class PaymentViewSet(viewsets.GenericViewSet):
         # deal : bootpay 결제 완료
         payment.deal_set.all().update(status=13)
 
+        buyer = payment.user
+
         bootpay = self.get_access_token()
         result = bootpay.verify(receipt_id)
         if result['status'] == 200:
@@ -450,6 +453,12 @@ class PaymentViewSet(viewsets.GenericViewSet):
                     # walletlog 생성 : 정산은 walletlog를 통해서만 정산
                     for deal in payment.deal_set.all():
                         WalletLog.objects.create(deal=deal, user=deal.seller)
+
+                        reference = UserActivityReference.objects.create(deal=deal)
+                        # activity log 생성 : seller
+                        UserActivityLog.objects.create(user=deal.seller, status=200, reference=reference)
+                        # activity log 생성 : buyer
+                        UserActivityLog.objects.create(user=buyer, status=100, reference=reference)
                     return Response(status.HTTP_200_OK)
         else:
             result = bootpay.cancel('receipt_id')
@@ -460,6 +469,10 @@ class PaymentViewSet(viewsets.GenericViewSet):
                 Trade.objects.filter(deal__payment=payment).update(status=-3) #결제되었다가 취소이므로 환불.
                 # deal : bootpay 환불 완료
                 payment.deal_set.all().update(status=-3)
+
+                # activity log : buyer 결제 취소됨
+                UserActivityLog.objects.create(user=buyer, status=190)
+
                 return Response({'detail': 'canceled'}, status=status.HTTP_200_OK)
 
         # todo: http stateless 특성상 데이터 집계가 될수 없을 수도 있어서 서버사이드랜더링으로 고쳐야 함...

@@ -379,7 +379,6 @@ class ProductForTradeSerializer(serializers.ModelSerializer):
         return obj.discounted_price
 
 
-
 class StoreProductSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
 
@@ -578,7 +577,7 @@ class DeliveryPolicyWriteSerializer(serializers.ModelSerializer):
         delivery_policy = self.Meta.model.objects.create(**delivery_data)
 
         # store account
-        StoreAccount.objects.create(**account_data)
+        StoreAccount.objects.get_or_create(**account_data)
 
         # Done!
         return delivery_policy

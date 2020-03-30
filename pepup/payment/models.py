@@ -301,14 +301,24 @@ class WalletLog(models.Model):
         super(WalletLog, self).save(*args, **kwargs)
 
     def _check_deal_status(self):
+        from user_activity.models import UserActivityReference, UserActivityLog
+
         if self.is_settled:
             deal = self.deal
             if deal.status == 6 or deal.is_settled:
                 raise Exception('정산이 불가한 상태입니다.')
             elif deal.settable:
+
+                # activity 생성을 위함
+                reference = UserActivityReference.objects.get_or_create(deal=deal)
+
                 self.status = 2
                 self.deal.is_settled = True
                 self.deal.save()
+
+                # 정산 완료시 알림
+                UserActivityLog.objects.get_or_create(user=deal.seller, status=203, reference=reference)
+
             else:
                 raise Exception('정산이 불가한 상태입니다.')
 

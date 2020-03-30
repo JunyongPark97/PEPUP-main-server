@@ -11,8 +11,9 @@ from django.db.models.functions import TruncDate
 from payment.models import Deal, Review, Delivery
 from payment.serializers import TradeSerializer, UserNamenPhoneSerializer, AddressSerializer
 from payment.utils import groupbyseller
+from user_activity.models import UserActivityLog, UserActivityReference
 from user_activity.serializers import PurchasedDealSerializer, ReviewSerializer, ReviewRetrieveSerializer, \
-    SimpleWaybillSerializer, SoldDealSerializer, WaybillCreateSerializer
+    SimpleWaybillSerializer, SoldDealSerializer, WaybillCreateSerializer, ActivitySerializer
 
 
 class PurchasedViewSet(viewsets.ModelViewSet):
@@ -38,13 +39,10 @@ class PurchasedViewSet(viewsets.ModelViewSet):
             group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).\
                 filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
-            group_by_date['date'] = str(date)
+            group_by_date['date'] = str(date.strftime('%Y.%m.%d'))
             group_by_date['result'] = serialized_data.data
             list_data.append(group_by_date)
             group_by_date = {}
-            # group_by_date['date']= str(date)
-            # group_by_date['data']= serialized_data.data
-            # list_data.append(group_by_date)
 
         return Response(list_data, status=status.HTTP_200_OK)
 
@@ -127,6 +125,9 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         data.update({'seller': seller.id})
         data.update({'deal': deal.id})
 
+        # activity 생성을 위함
+        reference = UserActivityReference.objects.get_or_create(deal=deal)
+
         # update
         if hasattr(deal, 'review'):
             serializer = ReviewSerializer(deal.review, data=data, context={'request': request})
@@ -134,6 +135,7 @@ class PurchasedViewSet(viewsets.ModelViewSet):
             serializer.save()
             deal.status = 5
             deal.save()
+
             return Response(status=status.HTTP_206_PARTIAL_CONTENT)
 
         serializer = ReviewSerializer(data=data, context={'request': request})
@@ -144,6 +146,11 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         deal.status = 5
         deal.save()
 
+        # 첫 수령확인 or 리뷰작성 시 : 거래가 완료되었습니다. 정산 예정입니다. -> 리뷰 존재하면 리뷰를 확인해주세요? /
+        # 운송장 작성 5일이후 자동 생성된 activity가 있을 경우, 이후 리뷰 작성시 생성되지 않게 하기 위해 get or create
+        # TODO : 운송장 번호 5일 째 리뷰 없을 경우 따로 생성
+        UserActivityLog.objects.get_or_create(user=deal.seller, status=201, reference=reference)
+
         return Response(status=status.HTTP_201_CREATED)
 
     @action(methods=['get'], detail=True)
@@ -153,6 +160,7 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         # review 가 없는 경우, 대표이미지와 별점 0점을 default 로 return
         if not hasattr(deal, 'review'):
             url = deal.trade_set.first().product.prodthumbnail.image_url
+            print(url)
             return Response({'deal_thumbnail': url, "satisfaction": float(0)}, status=status.HTTP_200_OK)
 
         review = deal.review
@@ -179,14 +187,10 @@ class SoldViewSet(viewsets.ModelViewSet):
             date = date['date']
             group_by_date_qs = queryset.annotate(date=TruncDate('transaction_completed_date')).filter(date=date)
             serialized_data = self.get_serializer(group_by_date_qs, many=True)
-            # group_by_date[str(date)] = serialized_data.data
-            group_by_date['date'] = str(date)
+            group_by_date['date'] = str(date.strftime('%Y.%m.%d'))
             group_by_date['result'] = serialized_data.data
             list_data.append(group_by_date)
             group_by_date = {}
-            # group_by_date['date']= str(date)
-            # group_by_date['data']= serialized_data.data
-            # list_data.append(group_by_date)
 
         return Response(list_data, status=status.HTTP_200_OK)
 
@@ -283,4 +287,30 @@ class SoldViewSet(viewsets.ModelViewSet):
         deal.trade_set.update(status=3) # 배송중
         deal.save()
 
+        # activity log 생성: 운송장 번호 입력
+        reference = UserActivityReference.objects.get_or_create(deal=deal)
+        # seller 의 경우 이미 존재하던 '주문됨, 운송장번호 입력'을 운송장 번호가 존재하면 '입력됨'으로 serializer에서 return
+        # buyer에게 새로운 activity 생성
+        UserActivityLog.objects.create(user=deal.buyer, status=101, reference=reference)
+
         return Response(status=status.HTTP_201_CREATED)
+
+
+class ActivityViewSet(viewsets.ModelViewSet):
+    queryset = UserActivityLog.objects.filter(is_active=True)
+    permission_classes = [IsAuthenticated, ]
+    serializer_class = ActivitySerializer
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        queryset = self.get_queryset().filter(user=user)
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
