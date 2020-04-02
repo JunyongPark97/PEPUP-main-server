@@ -184,3 +184,15 @@ class AddressSerializer(serializers.ModelSerializer):
 class KakaoSerializer(serializers.Serializer):
     id = serializers.CharField()
     # properties =
+
+
+class ChatUserInfoSerializer(serializers.ModelSerializer):
+    profile_img = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'nickname', 'profile_img']
+
+    def get_profile_img(self, obj):
+        profile = obj.profile
+        return profile.profile_img_url

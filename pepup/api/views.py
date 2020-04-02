@@ -791,7 +791,6 @@ class StoreViewSet(viewsets.GenericViewSet):
         """
         retrieve_user = self.get_retrieve_user(kwargs['pk'])
         user = request.user
-
         if not retrieve_user:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 

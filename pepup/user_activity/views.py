@@ -8,6 +8,8 @@ from rest_framework import status, viewsets
 
 from django.db.models import Count
 from django.db.models.functions import TruncDate
+
+from core.pagination import PepupPagination
 from payment.models import Deal, Review, Delivery
 from payment.serializers import TradeSerializer, UserNamenPhoneSerializer, AddressSerializer
 from payment.utils import groupbyseller
@@ -300,13 +302,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
     queryset = UserActivityLog.objects.filter(is_active=True)
     permission_classes = [IsAuthenticated, ]
     serializer_class = ActivitySerializer
+    pagination_class = PepupPagination
 
     def list(self, request, *args, **kwargs):
         user = request.user
         queryset = self.get_queryset().filter(user=user).order_by('-id')
-        serializer = self.get_serializer(queryset, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset=queryset, request=request)
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

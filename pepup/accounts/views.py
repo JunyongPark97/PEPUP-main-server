@@ -32,7 +32,7 @@ from accounts.serializers import (
     AddressSerializer,
     SearchAddrSerializer,
     CommonSerializer,
-)
+    ChatUserInfoSerializer)
 from accounts.socialserailzers import CustomSocialLoginSerializer
 from .utils import create_token, SMSManager, JusoMaster
 from accounts.models import PhoneConfirm, User, Profile, SmsConfirm, Address
@@ -482,6 +482,14 @@ class AccountViewSet(viewsets.GenericViewSet):
         if hasattr(user, 'delivery_policy'):
             return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(methods=['get'], detail=False)
+    def chat_userinfo(self, request):
+        user = request.user
+
+        serializer = ChatUserInfoSerializer(user)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class SocialUserViewSet(ViewSetMixin, SocialLoginView):
