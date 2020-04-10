@@ -182,12 +182,12 @@ class ActivitySerializer(serializers.ModelSerializer):
             elif status == 101:
                 if hasattr(deal, 'review'):
                     if deal.review.context:
-                        return status, 1, False, None, None  # status 1 리뷰 존재 : None(review 작성완료),
+                        return status, 1, False, None, deal.id  # status 1 리뷰 존재 : None(review 작성완료),
                     return status, 11, False, None, deal.id # status 11 별점만 있음 : 리뷰 작성 btn
                 return status, 10, False, None, deal.id # status 10 수령확인 btn
             elif status == 102: # 운송장 작성 이후 5일 뒤 자동생성
                 if hasattr(deal, 'review'):
-                    return status, 1, False, None, None  # None(review 작성완료)
+                    return status, 1, False, None, deal.id  # None(review 작성완료)
                 return status, 11, False, None, deal.id  # 5일 뒤 자동구매 확정 이후 리뷰 없는경우: 리뷰작성 btn
             elif status == 190:
                 return status, 99, False, None, None # 결제에러 error status 99
@@ -195,7 +195,7 @@ class ActivitySerializer(serializers.ModelSerializer):
             # seller
             elif status == 200:
                 if deal.delivery.number_created_time:
-                    return status, 2, False, None, None  # 운송장 입력 완료: None(운송장입력완료)
+                    return status, 2, False, None, deal.id  # 운송장 입력 완료: None(운송장입력완료)
                 return status, 3, False, None, deal.id  # 운송장 없음 : 운송장 입력 btn
             elif status in [201, 202, 203]:
                 return status, 0, False, None, None  # None
