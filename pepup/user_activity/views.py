@@ -290,7 +290,7 @@ class SoldViewSet(viewsets.ModelViewSet):
         deal.save()
 
         # activity log 생성: 운송장 번호 입력
-        reference = UserActivityReference.objects.get_or_create(deal=deal)
+        reference, _ = UserActivityReference.objects.get_or_create(deal=deal)
         # seller 의 경우 이미 존재하던 '주문됨, 운송장번호 입력'을 운송장 번호가 존재하면 '입력됨'으로 serializer에서 return
         # buyer에게 새로운 activity 생성
         UserActivityLog.objects.create(user=deal.buyer, status=101, reference=reference)
