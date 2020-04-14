@@ -169,6 +169,7 @@ class ProdThumbnail(models.Model):
         resp = requests.get(self.product.images.first().image_url)
         image = Image.open(BytesIO(resp.content))
         crop_io = BytesIO()
+        crop_io.seek(0)
         # image.convert("RGB")
         image.save(crop_io, format='png')
         crop_file = InMemoryUploadedFile(crop_io, None, self._get_file_name(), 'image/jpeg', len(crop_io.getvalue()), None)

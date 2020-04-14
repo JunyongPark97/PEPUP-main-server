@@ -408,17 +408,7 @@ class StoreSerializer(serializers.ModelSerializer):
                   'review_count', 'followers', 'followings', 'user_followed']
 
     def get_profile(self, obj):
-        if hasattr(obj.socialaccount_set.last(), 'extra_data'):
-            social_profile_img = obj.socialaccount_set.last().extra_data['properties'].get('profile_image')
-            if social_profile_img:
-                return {"thumbnail_img": social_profile_img}
-            else:
-                return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
-        try:
-            profile = obj.profile
-            return ThumbnailSerializer(profile).data
-        except:
-             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+        return obj.profile.profile_img_url
 
     def get_profile_introduce(self, obj):
         if hasattr(obj, 'profile'):
@@ -487,14 +477,7 @@ class SimpleProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'profile', 'review_score', 'nickname']
 
     def get_profile(self, obj):
-        if hasattr(obj.socialaccount_set.last(), 'extra_data'):
-            social_profile_img = obj.socialaccount_set.last().extra_data['properties'].get('profile_image')
-            return {"thumbnail_img": social_profile_img}
-        try:
-            profile = obj.profile
-            return ThumbnailSerializer(profile).data
-        except:
-            return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+        return obj.profile.profile_img_url
 
     def get_review_score(self, obj):
         if obj.received_reviews.first():
@@ -515,12 +498,7 @@ class StoreReviewSerializer(serializers.ModelSerializer):
 
     def get_buyer_profile(self, obj):
         buyer = obj.buyer
-        try:
-            profile = buyer.profile
-            return ThumbnailSerializer(profile).data
-        except:
-             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
-
+        return buyer.profile.profile_img_url
 
     def get_buyer_name(self, obj):
         buyer = obj.buyer
@@ -533,14 +511,14 @@ class StoreReviewSerializer(serializers.ModelSerializer):
 
 
 class StoreProfileRetrieveSerializer(serializers.ModelSerializer):
-    profile_img = serializers.SerializerMethodField()
+    profile = serializers.SerializerMethodField()
     introduce = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['profile_img', 'nickname', 'introduce']
+        fields = ['profile', 'nickname', 'introduce']
 
-    def get_profile_img(self, obj):
+    def get_profile(self, obj):
         profile = obj.profile
         return profile.profile_img_url
 

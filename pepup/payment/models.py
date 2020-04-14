@@ -211,7 +211,10 @@ class Trade(models.Model):  # 카트, 상품 하나하나당 아이디 1개씩
         정산 가능 여부 , 거래 완료 여부
         """
         deal = self.deal
-        completed_date = deal.delivery.number_created_time
+        if not hasattr(deal, 'delivery'):
+            print('asdasd')
+        else:
+            completed_date = deal.delivery.number_created_time
         if self.status == 5:
             return True
         elif self.status in [2, 3, 4] and completed_date:
@@ -311,7 +314,7 @@ class WalletLog(models.Model):
 
                 # activity 생성을 위함
                 reference = UserActivityReference.objects.get_or_create(deal=deal)
-
+                print(reference)
                 self.status = 2
                 self.deal.is_settled = True
                 self.deal.save()
