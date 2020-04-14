@@ -147,14 +147,17 @@ class UserSerializer(serializers.ModelSerializer):
         return obj._to.count()
 
     def get_profile(self, obj):
-        if hasattr(obj.socialaccount_set.last(), 'extra_data'):
-            social_profile_img = obj.socialaccount_set.last().extra_data['properties'].get('profile_image')
-            return {"thumbnail_img": social_profile_img}
-        try:
-            profile = obj.profile
-            return ThumbnailSerializer(profile).data
-        except:
-             return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
+        return obj.profile.profile_img_url
+
+    # def get_profile(self, obj):
+    #     if hasattr(obj.socialaccount_set.last(), 'extra_data'):
+    #         social_profile_img = obj.socialaccount_set.last().extra_data['properties'].get('profile_image')
+    #         return {"thumbnail_img": social_profile_img}
+    #     try:
+    #         profile = obj.profile
+    #         return ThumbnailSerializer(profile).data
+    #     except:
+    #          return {"thumbnail_img": "{}img/profile_default.png".format(settings.STATIC_ROOT)}
 
 
 class ProfileSerializer(serializers.ModelSerializer):

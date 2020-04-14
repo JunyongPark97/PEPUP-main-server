@@ -92,7 +92,10 @@ class Profile(models.Model):
             return self.thumbnail_img.url
         elif hasattr(self.user.socialaccount_set.last(), 'extra_data'):
             if 'properties' in self.user.socialaccount_set.last().extra_data:
-                return self.user.socialaccount_set.last().extra_data['properties'].get('profile_image')
+                if self.user.socialaccount_set.last().extra_data['properties'].get('profile_image'):
+                    self.user.socialaccount_set.last().extra_data['properties'].get('profile_image')
+                else:
+                    return "http://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/media/default_profile.png"
         else:
             return self.thumbnail_img.url
 
