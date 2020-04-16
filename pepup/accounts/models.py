@@ -81,6 +81,9 @@ class Profile(models.Model):
     # background_img = models.ImageField(upload_to=img_directory_path_profile, null=True, blank=True)
     introduce = models.TextField(verbose_name='소개', default="")
 
+    # def __str__(self):
+    #     return self.profile_img_url
+
     @property
     def profile_img_url(self):
         """
@@ -93,7 +96,7 @@ class Profile(models.Model):
         elif hasattr(self.user.socialaccount_set.last(), 'extra_data'):
             if 'properties' in self.user.socialaccount_set.last().extra_data:
                 if self.user.socialaccount_set.last().extra_data['properties'].get('profile_image'):
-                    self.user.socialaccount_set.last().extra_data['properties'].get('profile_image')
+                    return self.user.socialaccount_set.last().extra_data['properties'].get('profile_image')
                 else:
                     return "http://pepup-server-storages.s3.ap-northeast-2.amazonaws.com/media/default_profile.png"
         else:

@@ -978,6 +978,8 @@ class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
         update : 배송비수정 & 배송정책수정
         """
         instance = self.get_object()
+        # user = request.user
+        # instance = user.delivery_policy
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -988,6 +990,10 @@ class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
         retrieve
         """
         return super(DeliveryPolicyViewSet, self).retrieve(request, *args, **kwargs)
+
+    def get_object(self):
+        user = self.request.user
+        return user.delivery_policy
 
 
 class StoreAccountViewSet(viewsets.ModelViewSet):
