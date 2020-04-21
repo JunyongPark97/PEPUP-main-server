@@ -277,6 +277,8 @@ class ProductViewSet(viewsets.GenericViewSet):
         user = request.user
         if instance.seller.id != user.id:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
+        if instance.sold and instance.sold_status == 1:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
         instance.is_active = False
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -292,10 +294,11 @@ class ProductViewSet(viewsets.GenericViewSet):
         if instance.seller.id != user.id:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         sold = instance.sold
-        if sold and not instance.sold_status == 1:
+        if sold and instance.sold_status == 2:
             instance.sold = False
         else:
             instance.sold = True
+            instance.sold_status = 2
         instance.save()
         return Response({'sold': instance.sold}, status=status.HTTP_206_PARTIAL_CONTENT)
 
@@ -562,7 +565,7 @@ class FollowViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_recommended_seller(self):
-        self.recommended_seller = User.objects.all()
+        self.recommended_seller = User.objects.filter(is_active=True)
         if self.recommended_seller.count() > 10:
             self.recommended_seller = self.recommended_seller[:10]
         # todo: recommend query
@@ -571,7 +574,7 @@ class FollowViewSet(viewsets.GenericViewSet):
         self.recommended = UserSerializer(self.recommended_seller, many=True)
 
     def get_products_by_follow(self):
-        follows = Follow.objects.filter(_from=self.user)
+        follows = Follow.objects.filter(_from=self.user).filter(_to__is_active=True)
         self.follows_by_seller = follows.filter(tag=None, is_follow=True)
         self.follows_by_tag = follows\
             .prefetch_related('tag')\
@@ -582,6 +585,7 @@ class FollowViewSet(viewsets.GenericViewSet):
             .select_related('seller__profile')\
             .prefetch_related('seller___to')\
             .prefetch_related('tag')\
+            .filter(is_active=True)\
             .filter(seller___to__in=self.follows_by_seller)
 
         self.products_by_tag = Product.objects\
@@ -589,6 +593,7 @@ class FollowViewSet(viewsets.GenericViewSet):
             .select_related('seller__profile') \
             .prefetch_related('seller___to') \
             .prefetch_related('tag')\
+            .filter(is_active=True)\
             .filter(tag__follow__in=self.follows_by_tag)
 
     def list(self, request):
@@ -712,7 +717,7 @@ class SearchViewSet(viewsets.GenericViewSet):
         if len(keyword) < 1:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         try:
-            products = Product.objects.filter(name__icontains=keyword).order_by('-created_at')
+            products = Product.objects.filter(name__icontains=keyword, is_active=True).order_by('-created_at')
         except Product.DoesNotExist:
             raise Http404
 
@@ -749,7 +754,7 @@ class SearchViewSet(viewsets.GenericViewSet):
         return paginator.get_paginated_response(serializer.data, tag_followed=tag_followed)
 
     def search_by_product(self, keyword):
-        searched_product = Product.objects.filter(name__icontains=keyword)
+        searched_product = Product.objects.filter(name__icontains=keyword).filter(is_active=True)
         return searched_product.count()
 
     # TODO : recommend by user logs(searched, clicked, liked, followed), optimize
@@ -764,7 +769,7 @@ class SearchViewSet(viewsets.GenericViewSet):
     # TODO : ordering by related seller (Seller product's tag), optimize
     def search_by_seller(self, keyword):
         queryset = User.objects.prefetch_related('product_set')\
-            .filter(nickname__icontains=keyword)\
+            .filter(nickname__icontains=keyword, is_active=True)\
             .order_by('nickname')[:5]
         return queryset
 
@@ -802,7 +807,7 @@ class StoreViewSet(viewsets.GenericViewSet):
 
         store_serializer = StoreSerializer(retrieve_user, context={'user_followed': user_followed})
 
-        products = retrieve_user.product_set.all().order_by('-created_at')
+        products = retrieve_user.product_set.filter(is_active=True).order_by('-created_at')
 
         paginator = StorePagination()
         page = paginator.paginate_queryset(queryset=products, request=request)
@@ -819,7 +824,7 @@ class StoreViewSet(viewsets.GenericViewSet):
         if not retrieve_user:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        likes = retrieve_user.liker.filter(is_liked=True)
+        likes = retrieve_user.liker.filter(is_liked=True, product__is_active=True)
 
         paginator = StorePagination()
         page = paginator.paginate_queryset(queryset=likes, request=request)
@@ -905,12 +910,6 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_206_PARTIAL_CONTENT)
 
-    # def get_object(self):
-    #     user = super(ProfileViewSet, self).get_object()
-    #     print(user)
-    #     profile = user.profile
-    #     return profile
-
 
 class ReviewViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
     serializer_class = ReviewCreateSerializer
@@ -977,9 +976,10 @@ class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
         """
         update : 배송비수정 & 배송정책수정
         """
-        instance = self.get_object()
-        # user = request.user
-        # instance = user.delivery_policy
+        user = request.user
+        if not hasattr(user, 'delivery_policy'):
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+        instance = user.delivery_policy
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -989,11 +989,16 @@ class DeliveryPolicyViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin,
         """
         retrieve
         """
-        return super(DeliveryPolicyViewSet, self).retrieve(request, *args, **kwargs)
+        return None
 
-    def get_object(self):
-        user = self.request.user
-        return user.delivery_policy
+    @action(methods=['get'], detail=False)
+    def owner(self, request, *args, **kwargs):
+        user = request.user
+        if not hasattr(user, 'delivery_policy'):
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+        instance = user.delivery_policy
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class StoreAccountViewSet(viewsets.ModelViewSet):
