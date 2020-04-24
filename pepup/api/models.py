@@ -33,8 +33,8 @@ class GenderDivision(models.Model):
     OTHER = 4
 
     GENDER = (
-        (MAN, '남성'),
         (WOMAN, '여성'),
+        (MAN, '남성'),
         (UNISEX, '유니섹스'),
         (OTHER, '패션잡화'),
     )

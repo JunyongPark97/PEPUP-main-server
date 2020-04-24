@@ -67,7 +67,11 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         user_info = UserNamenPhoneSerializer(user).data
 
         # address
-        addr = deal.delivery.address  # 결제시 설정한 주소지
+        addresses = user.address_set.filter(recent=True)
+        if addresses:
+            addr = AddressSerializer(addresses.last()).data
+        else:
+            addr = None
 
         # pay info : price, delivery_charge, total
         price = 0
@@ -158,7 +162,6 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         # review 가 없는 경우, 대표이미지와 별점 0점을 default 로 return
         if not hasattr(deal, 'review'):
             url = deal.trade_set.first().product.prodthumbnail.image_url
-            print(url)
             return Response({'deal_thumbnail': url, "satisfaction": float(0)}, status=status.HTTP_200_OK)
 
         review = deal.review
@@ -212,11 +215,11 @@ class SoldViewSet(viewsets.ModelViewSet):
         user_info = UserNamenPhoneSerializer(buyer).data
 
         # address
-        addr = deal.delivery.address  # 결제시 설정한 주소지
-        # if addresses:
-        #     addr = AddressSerializer(addresses.last()).data
-        # else:
-        #     addr = None
+        addresses = buyer.address_set.filter(recent=True)
+        if addresses:
+            addr = AddressSerializer(addresses.last()).data
+        else:
+            addr = None
 
         # pay info : price, delivery_charge, total
         price = 0
