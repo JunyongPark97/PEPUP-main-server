@@ -191,16 +191,23 @@ class TradeViewSet(viewsets.GenericViewSet, mixins.DestroyModelMixin):
         ordering_product = groupbyseller(trade_serializer.data)
         total_price = 0
         delivery_charge = 0
+        mountain_delivery_charge = 0
+
         for product in ordering_product:
             payinfo_data = product.copy()
             payinfo = payinfo_data.pop('payinfo')
             total_price = total_price + int(payinfo['total'])
             delivery_charge = delivery_charge + int(payinfo['delivery_charge'])
+            mountain_delivery_charge = mountain_delivery_charge + int(payinfo['mountain_delivery_charge'])
+
         return Response({"ordering_product": ordering_product,
                          "user_info": user_info.data,
                          "address": addr,
                          "memo_list": memo_list,
-                         "price": {"total_price": total_price, "total_delivery_charge": delivery_charge}
+                         "price": {"total_price": total_price,
+                                   "total_delivery_charge": delivery_charge,
+                                   "total_mountain_delivery_charge": mountain_delivery_charge,
+                                   }
                          })
 
 
@@ -213,7 +220,9 @@ class PaymentViewSet(viewsets.GenericViewSet):
         """
         1. filter된 trades들의 pk list가 request받은 pk와 같은 지 확인
         """
+
         if not list(self.trades.values_list('pk', flat=True)) == self.trades_id:
+            print('===1')
             raise exceptions.NotAcceptable(detail='요청한 trade의 정보가 없거나, 잘못된 유저로 요청하였습니다.')
 
     def check_sold(self):
@@ -221,6 +230,7 @@ class PaymentViewSet(viewsets.GenericViewSet):
         user = self.request.user
         product_ids = Product.objects.filter(trade__in=self.trades, sold=True)
         if sold_products_trades:
+            print('===2')
             sold_products_trades.delete()  # 만약 결제된 상품이면, 카트(trades)에서 삭제해야함.
             TradeErrorLog.objects.create(user=user, product_ids=list(product_ids), status=1, description="sold 된 상품이 있음")
             raise exceptions.NotAcceptable(detail='판매된 상품이 포함되어 있습니다.')
@@ -310,13 +320,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
         self.request = request
 
         data = request.data.copy()
-
+        print(data)
         # replace type for web debugging, TODO : remove here
         price = data.pop('price')
         address = data.pop('address')
         memo = data.pop('memo')
         application_id = data.pop('application_id')
         trades = data.pop('trades')
+        mountain = data.pop('mountain')
         trades_list = []
 
         if type(trades[0]) == str:
@@ -325,12 +336,14 @@ class PaymentViewSet(viewsets.GenericViewSet):
         else:
             trades_list = trades
 
+        trades_list.sort()
+
         price = int(price[0]) if type(price) == list else price
         address = address[0] if type(address) == list else address
         memo = memo[0] if type(memo) == list else memo
         application_id = application_id[0] if type(application_id) == list else application_id
         val_data = {'trades': trades_list, 'price': price, 'address': address, 'memo': memo,
-                    'application_id': application_id}
+                    'application_id': application_id, 'mountain': mountain}
 
         self.serializer = self.get_serializer(data=val_data)
         if not self.serializer.is_valid():
@@ -340,7 +353,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
             .select_related('product') \
             .select_related('seller', 'seller__delivery_policy') \
             .filter(pk__in=self.trades_id, buyer=request.user)
-
         self.check_trades()
         self.check_sold()
 
@@ -359,8 +371,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         })
 
         return Response({'results': serializer.data}, status=status.HTTP_200_OK)
-        # return Response({'results': {'payform': serializer.data, 'order_id': self.payment.id}},
-        #                 status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def confirm(self, request):

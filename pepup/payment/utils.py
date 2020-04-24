@@ -34,6 +34,7 @@ def groupbyseller(dict_ls):
                 delivery_charge = 0
             else:
                 delivery_charge = d['payinfo']['general']
+            mountain_delivery_charge = d['payinfo']['mountain']
 
             store[d['seller']['id']] = {
                 'seller': d['seller'],
@@ -41,6 +42,7 @@ def groupbyseller(dict_ls):
                 'payinfo': {
                     'total': d['product']['discounted_price'],
                     'delivery_charge': delivery_charge,
+                    'mountain_delivery_charge': mountain_delivery_charge,
                     'active_amount': d['payinfo']['active_amount'],
                     'active_volume': d['payinfo']['active_volume'],
                     'lack_amount': lack_amount,

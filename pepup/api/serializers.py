@@ -100,6 +100,8 @@ class SizeSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         if obj.size_max:
             return "{} ({}-{})".format(obj.size_name, obj.size, obj.size_max)
+        if obj.category.name in ['BAG', 'ACCESSORY', 'JEWELRY']:
+            return '없음'
         return "{} ({})".format(obj.size_name, obj.size)
 
 
@@ -153,6 +155,8 @@ class ProductSerializer(serializers.ModelSerializer):
             return "{}({}-{})".format(obj.size.size_name, obj.size.size, obj.size.size_max)
         if obj.size.category.name == 'SHOES':
             return "{}(cm)".format(obj.size.size)
+        if obj.size.category.name in ['BAG', 'ACCESSORY', 'JEWELRY']:
+            return "-"
         return "{}({})".format(obj.size.size_name, obj.size.size)
 
     def get_discounted_price(self, obj):

@@ -273,7 +273,6 @@ class ProductViewSet(viewsets.GenericViewSet):
         Product 를 삭제하지 않고 is_active=False 로 변환합니다.
         """
         instance = self.get_object()
-        print(instance)
         user = request.user
         if instance.seller.id != user.id:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
