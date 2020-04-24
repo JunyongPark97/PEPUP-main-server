@@ -33,10 +33,10 @@ class GenderDivision(models.Model):
     OTHER = 4
 
     GENDER = (
-        (MAN, 'Man'),
-        (WOMAN, 'Woman'),
-        (UNISEX, 'Unisex'),
-        (OTHER, 'Other'),
+        (MAN, '남성'),
+        (WOMAN, '여성'),
+        (UNISEX, '유니섹스'),
+        (OTHER, '패션잡화'),
     )
 
     name = models.IntegerField(choices=GENDER)
