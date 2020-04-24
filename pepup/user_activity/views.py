@@ -67,11 +67,7 @@ class PurchasedViewSet(viewsets.ModelViewSet):
         user_info = UserNamenPhoneSerializer(user).data
 
         # address
-        addresses = user.address_set.filter(recent=True)
-        if addresses:
-            addr = AddressSerializer(addresses.last()).data
-        else:
-            addr = None
+        addr = deal.delivery.address  # 결제시 설정한 주소지
 
         # pay info : price, delivery_charge, total
         price = 0
@@ -216,11 +212,11 @@ class SoldViewSet(viewsets.ModelViewSet):
         user_info = UserNamenPhoneSerializer(buyer).data
 
         # address
-        addresses = buyer.address_set.filter(recent=True)
-        if addresses:
-            addr = AddressSerializer(addresses.last()).data
-        else:
-            addr = None
+        addr = deal.delivery.address  # 결제시 설정한 주소지
+        # if addresses:
+        #     addr = AddressSerializer(addresses.last()).data
+        # else:
+        #     addr = None
 
         # pay info : price, delivery_charge, total
         price = 0

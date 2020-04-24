@@ -171,6 +171,7 @@ class Delivery(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sender')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='receiver')
     address = models.TextField(verbose_name='배송지')
+
     memo = models.TextField(default='', verbose_name='배송메모')
     mountain = models.BooleanField(verbose_name='산간지역유무', default=False)
 

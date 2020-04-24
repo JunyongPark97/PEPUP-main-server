@@ -222,7 +222,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         """
 
         if not list(self.trades.values_list('pk', flat=True)) == self.trades_id:
-            print('===1')
             raise exceptions.NotAcceptable(detail='요청한 trade의 정보가 없거나, 잘못된 유저로 요청하였습니다.')
 
     def check_sold(self):
@@ -230,7 +229,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         user = self.request.user
         product_ids = Product.objects.filter(trade__in=self.trades, sold=True)
         if sold_products_trades:
-            print('===2')
             sold_products_trades.delete()  # 만약 결제된 상품이면, 카트(trades)에서 삭제해야함.
             TradeErrorLog.objects.create(user=user, product_ids=list(product_ids), status=1, description="sold 된 상품이 있음")
             raise exceptions.NotAcceptable(detail='판매된 상품이 포함되어 있습니다.')
@@ -320,7 +318,6 @@ class PaymentViewSet(viewsets.GenericViewSet):
         self.request = request
 
         data = request.data.copy()
-        print(data)
         # replace type for web debugging, TODO : remove here
         price = data.pop('price')
         address = data.pop('address')

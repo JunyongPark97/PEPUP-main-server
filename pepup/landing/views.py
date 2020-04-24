@@ -24,6 +24,8 @@ def sell_intro(request):
 def success(request):
     return render(request, 'success.html')
 
+def terms_of_use(request):
+    return render(request, 'terms_of_use.html')
 
 class RegisterView(GenericAPIView):
     serializer_class = RegisterSerializer
