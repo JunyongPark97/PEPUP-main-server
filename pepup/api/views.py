@@ -358,7 +358,7 @@ class ProductViewSet(viewsets.GenericViewSet):
         if related_products:
             related_products = RelatedProductSerializer(related_products, many=True).data
         else:
-            related_products = None
+            related_products = []
         return Response({
             'product': serializer.data,
             'isbagged': bagged,
@@ -375,6 +375,7 @@ class ProductViewSet(viewsets.GenericViewSet):
             .select_related('size','size__category','size__category__gender')\
             .prefetch_related('tag').\
             exclude(id=product.id).\
+            filter(second_category=second_category).\
             annotate(count=Count(
                 Case(
                     When(
