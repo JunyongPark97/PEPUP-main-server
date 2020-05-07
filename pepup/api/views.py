@@ -748,7 +748,7 @@ class SearchViewSet(viewsets.GenericViewSet):
             tag_followed = False
 
         paginator = TagSearchResultPagination()
-        products = Product.objects.filter(tag=tag).order_by('-created_at')
+        products = Product.objects.filter(tag=tag, is_active=True).order_by('-created_at')
         page = paginator.paginate_queryset(queryset=products, request=request)
         serializer = self.get_serializer(page, many=True)
         return paginator.get_paginated_response(serializer.data, tag_followed=tag_followed)
