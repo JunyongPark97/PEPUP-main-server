@@ -18,6 +18,7 @@ from rest_framework import mixins
 
 # allauth social
 from allauth.socialaccount.providers.kakao.views import KakaoOAuth2Adapter
+from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from rest_framework.viewsets import ViewSetMixin
@@ -492,36 +493,11 @@ class AccountViewSet(viewsets.GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class SocialUserViewSet(ViewSetMixin, SocialLoginView):
-    serializer_class = CustomSocialLoginSerializer
 
-    def _login(self):
-        self.user = self.serializer.validated_data['user']
-        self.token = create_token(self.token_model, self.user)
-        if getattr(settings, 'REST_SESSION_LOGIN', True):
-            self.process_login()
+### ADDRESS SEARCH VIEWSET ###
 
-    @action(methods=['post'], detail=False)
-    def login(self, request):
-        self.request = request
-        self.serializer = self.get_serializer(data=self.request.data,
-                                              context={'request': request})
-
-        self.serializer.is_valid(raise_exception=True)
-        self._login()
-        self.create()
-        response = self.get_response()
-        response.data['pk'] = self.user.id
-        return response
-
-    @action(methods=['get'],detail=False)
-    def callback(self, request):
-        return Response(None, status=status.HTTP_200_OK)
-
-    def create(self):
-        # process signup
-        pass
-
+def search_address_page(request):
+    return render(request, 'address.html')
 
 class AddressViewSet(viewsets.ModelViewSet):
     queryset = Address.objects.all()
@@ -598,18 +574,36 @@ class AddressViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_206_PARTIAL_CONTENT)
 
 
-def search_address_page(request):
-    return render(request, 'address.html')
+### SOCIAL LOGIN VIEWSET ###
+class SocialUserViewSet(ViewSetMixin, SocialLoginView):
+    serializer_class = CustomSocialLoginSerializer
 
+    def _login(self):
+        self.user = self.serializer.validated_data['user']
+        self.token = create_token(self.token_model, self.user)
+        if getattr(settings, 'REST_SESSION_LOGIN', True):
+            self.process_login()
 
+    @action(methods=['post'], detail=False)
+    def login(self, request):
+        self.request = request
+        self.serializer = self.get_serializer(data=self.request.data,
+                                              context={'request': request})
 
-    # def get_object(self):
-    #     user = self.request.user
-    #     id = self.kwargs['pk']
-    #     obj = self.get_queryset().filter(user=user, id=id)
-    #     if not obj:
-    #         return Response(status=status.HTTP_404_NOT_FOUND)
-    #     return obj.last()
+        self.serializer.is_valid(raise_exception=True)
+        self._login()
+        self.create()
+        response = self.get_response()
+        response.data['pk'] = self.user.id
+        return response
+
+    @action(methods=['get'],detail=False)
+    def callback(self, request):
+        return Response(None, status=status.HTTP_200_OK)
+
+    def create(self):
+        # process signup
+        pass
 
 
 class CustomKakaoOAuth2Adapter(KakaoOAuth2Adapter):
@@ -618,6 +612,7 @@ class CustomKakaoOAuth2Adapter(KakaoOAuth2Adapter):
         resp = requests.get(self.profile_url, headers=headers)
         extra_data = resp.json()
         # create를 위해 제가 추가한 것
+        print(extra_data)
         self.extra_data = extra_data
         return self.get_provider().sociallogin_from_response(request,
                                                              extra_data)
@@ -629,6 +624,7 @@ class KakaoUserViewSet(SocialUserViewSet):
     # https://developers.kakao.com/docs/restapi/user-management#사용자-정보-요청
     # 유저 데이터 넣기 : nickname, profile
     def create(self):
+        print('test!!')
         userdata = self.serializer.extra_data['kakao_account'].get('profile')
         nickname = userdata.get('nickname')
         if not hasattr(self.user, 'profile'):
@@ -639,4 +635,40 @@ class KakaoUserViewSet(SocialUserViewSet):
 
 
 class GoogleUserViewSet(SocialUserViewSet):
+    # google 과 naver는 닉네임과 프로필을 받아야함!
     adapter_class = GoogleOAuth2Adapter
+
+    def create(self):
+        print('test!!')
+        userdata = self.serializer.extra_data['google_account'].get('profile')
+        nickname = userdata.get('nickname')
+        if not hasattr(self.user, 'profile'):
+            Profile.objects.create(user=self.user)
+        if nickname:
+            self.user.nickname = nickname
+            self.user.save()
+
+
+
+class MySocialAccountAdapter(DefaultSocialAccountAdapter, KakaoOAuth2Adapter):
+
+    def complete_login(self, request, app, token, **kwargs):
+        headers = {'Authorization': 'Bearer {0}'.format(token.token)}
+        resp = requests.get(self.profile_url, headers=headers)
+        extra_data = resp.json()
+        # create를 위해 제가 추가한 것
+        print(extra_data)
+        self.extra_data = extra_data
+        return self.get_provider().sociallogin_from_response(request,
+                                                             extra_data)
+
+    def pre_social_login(self, request, sociallogin):
+        user = sociallogin.user
+        if user.id:
+            return
+        try:
+            customer = User.objects.get(email=user.email)  # if user exists, connect the account to the existing account and login
+            sociallogin.state['process'] = 'connect'
+            perform_login(request, customer, 'none')
+        except User.DoesNotExist:
+            pass

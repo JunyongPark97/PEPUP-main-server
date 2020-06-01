@@ -41,7 +41,8 @@ SECONDS_APPS = [
     'notice',
     'landing',
     # 'chat',
-    'user_activity'
+    'user_activity',
+    'test'
 ]
 
 # package

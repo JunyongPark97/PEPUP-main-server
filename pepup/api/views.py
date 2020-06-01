@@ -1091,3 +1091,26 @@ class S3ImageUploadViewSet(viewsets.GenericViewSet):
         content_type = "image/jpeg"
         data = {"url": url, "image_key": image_key, "content_type": content_type, "key":key}
         return Response(data)
+
+    def fun_temp_key(self):
+        # ext = request.GET.get('ext', 'jpg')
+        # if ext not in ('jpg', 'mp3', 'mp4'):
+        ext = 'jpg'
+        key = uuid.uuid4()
+        image_key = "%s.%s" % (key, ext)
+        url = "https://{}.s3.amazonaws.com/".format('pepup-storage')
+        content_type = "image/jpeg"
+        data = {"url": url, "image_key": image_key, "content_type": content_type, "key":key}
+        return data
+
+    @action(methods=['post'], detail=False, permission_classes=[IsAuthenticated, ])
+    def temp_key_list(self, request):
+        data = request.data
+        count = int(data['count'])
+        print(count)
+        temp_key_list = []
+        for i in range(count):
+            temp_key = self.fun_temp_key()
+            temp_key_list.append(temp_key)
+        print(temp_key_list)
+        return Response(temp_key_list)

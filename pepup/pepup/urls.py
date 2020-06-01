@@ -35,6 +35,8 @@ urlpatterns = [
     path('api/', include('user_activity.urls')),
     path('api/', include('notice.urls')),
 
+    path('api/', include('test.urls')),
+
     path('', include('landing.urls')),
     # ckeditor
     path('ckeditor/', include('ckeditor_uploader.urls')),

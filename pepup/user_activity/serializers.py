@@ -76,6 +76,8 @@ class SoldDealSerializer(serializers.ModelSerializer):
 
     def get_name(self, obj):
         trades = obj.trade_set.all()
+        if not trades:
+            return ''
         if trades.count() > 1:
             name = trades.first().product.name + ' 외 ' + str(trades.count()-1) + '건'
         else:

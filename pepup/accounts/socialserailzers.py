@@ -1,6 +1,8 @@
 from django.http import HttpRequest
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth import get_user_model
+from rest_framework.response import Response
+from rest_framework import status
 
 try:
     from allauth.account import app_settings as allauth_settings
@@ -14,7 +16,7 @@ try:
 except ImportError:
     raise ImportError("allauth needs to be added to INSTALLED_APPS.")
 
-from rest_framework import serializers
+from rest_framework import serializers, status
 from requests.exceptions import HTTPError
 
 
@@ -124,9 +126,10 @@ class CustomSocialLoginSerializer(serializers.Serializer):
                     email=login.user.email,
                 ).exists()
                 if account_exists:
-                    raise serializers.ValidationError(
-                        _("User is already registered with this e-mail address.")
-                    )
+                    return Response(status=status.HTTP_300_MULTIPLE_CHOICES) # todo : kinds of login type
+                    # raise serializers.ValidationError(
+                    #     _("User is already registered with this e-mail address.")
+                    # )
 
             login.lookup()
             login.save(request, connect=True)
